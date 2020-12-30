@@ -1,0 +1,12 @@
+[package]
+name = "mrsbfh"
+version = "0.1.0"
+authors = ["MTRNord <mtrnord1@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+# Command macros
+mrsbfh-macros = {path = "../mrsbfh-macros"}
+const-concat = {git = "https://github.com/Vurich/const-concat", rev = "f836e77a4ecadf6a11994340fdcbbdadcdc4906d"}
