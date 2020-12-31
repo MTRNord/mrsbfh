@@ -1,74 +1,17 @@
+pub(crate) mod utils;
+
+use crate::utils::get_arg;
 use convert_case::{Case, Casing};
 use proc_macro::TokenStream;
 use quote::quote;
 use syn::parse_macro_input;
 use syn::spanned::Spanned;
 
-fn get_arg<'a>(
-    input_span: proc_macro2::Span,
-    args: syn::AttributeArgs,
-    arg: &'a str,
-    expected: &'a str,
-    expected_args: usize,
-) -> Result<syn::LitStr, TokenStream> {
-    if args.len() == expected_args {
-        let meta = args
-            .iter()
-            .filter_map(|x| {
-                if let syn::NestedMeta::Meta(ref meta) = x {
-                    if meta.path().is_ident(&arg) {
-                        return Some(meta);
-                    }
-                }
-                None
-            })
-            .next();
-        if let Some(meta) = meta {
-            if let syn::Meta::NameValue(ref meta) = meta {
-                let meta_lit = meta.lit.clone();
-                return match meta_lit {
-                    syn::Lit::Str(s) => Ok(s),
-                    _ => {
-                        let error = syn::Error::new(
-                            meta.lit.span(),
-                            format!(
-                                "expected `{}`\n\nThe field '{}' needs to be a str literal!",
-                                expected, arg
-                            ),
-                        )
-                            .to_compile_error();
-                        Err(quote! {#error}.into())
-                    }
-                };
-            }
-        } else {
-            let error = syn::Error::new(
-                meta.span(),
-                format!(
-                    "1expected `{}`\n\nThe field '{}' is required!",
-                    expected, arg
-                ),
-            )
-                .to_compile_error();
-            return Err(quote! {#error}.into());
-        }
-    }
-    let error = syn::Error::new(
-        input_span,
-        format!(
-            "expected `{}` but not enough arguments where provided.",
-            expected
-        ),
-    )
-        .to_compile_error();
-    Err(quote! {#error}.into())
-}
-
 /// Used to define a command
 ///
 /// ```compile_fail
 /// #[command(help = "Description")]
-/// async fn r#in(mut tx: tokio::sync::mpsc::Sender<matrix_sdk::events::AnyMessageEventContent>, sender: String, mut args: Vec<&str>) -> Result<(), ParseErrors> {}
+/// async fn hello_world<C: mrsbfh::config::Config>(mut tx: mrsbfh::Sender, config: C, sender: String, mut args: Vec<&str>) -> Result<(), Box<dyn std::error::Error>> {}
 /// ```
 #[proc_macro_attribute]
 pub fn command(args: TokenStream, input: TokenStream) -> TokenStream {
@@ -79,7 +22,7 @@ pub fn command(args: TokenStream, input: TokenStream) -> TokenStream {
     let help_const_name = syn::Ident::new(
         &format!(
             "{}_HELP",
-            input.sig.ident.to_string().to_uppercase().replace("R#", "")
+            input.sig.ident.to_string().to_uppercase().replace("r#", "")
         ),
         input.sig.span(),
     );
@@ -126,7 +69,7 @@ pub fn command_generate(args: TokenStream, input: TokenStream) -> TokenStream {
                 .ident
                 .to_string()
                 .to_case(Case::Snake)
-                .split("_")
+                .split('_')
                 .map(|x| x.chars().next().unwrap().to_string().to_lowercase())
                 .collect();
             chars.join("")
@@ -186,46 +129,66 @@ pub fn command_generate(args: TokenStream, input: TokenStream) -> TokenStream {
     let help_preamble = help_title + &description + commands_title;
 
     let code = quote! {
-        use const_concat::*;
+        use mrsbfh::const_concat::*;
         const HELP_MARKDOWN: &str = const_concat!(#help_preamble, #(#help_parts,)*);
 
         async fn help(
-            mut tx: tokio::sync::mpsc::Sender<matrix_sdk::events::AnyMessageEventContent>,
-        ) -> Result<(), crate::errors::ParseErrors> {
-            let options = pulldown_cmark::Options::empty();
-            let parser = pulldown_cmark::Parser::new_ext(HELP_MARKDOWN, options);
+            mut tx: mrsbfh::Sender,
+        ) -> Result<(), std::boxed::Box<dyn std::error::Error>> {
+            let options = mrsbfh::pulldown_cmark::Options::empty();
+            let parser = mrsbfh::pulldown_cmark::Parser::new_ext(HELP_MARKDOWN, options);
             let mut html = String::new();
-            pulldown_cmark::html::push_html(&mut html, parser);
+            mrsbfh::pulldown_cmark::html::push_html(&mut html, parser);
             let owned_html = html.to_owned();
 
-            tokio::spawn(async move {
-                let content = matrix_sdk::events::AnyMessageEventContent::RoomMessage(
-                    matrix_sdk::events::room::message::MessageEventContent::notice_html(
+            mrsbfh::tokio::spawn(async move {
+                let content = mrsbfh::matrix_sdk::events::AnyMessageEventContent::RoomMessage(
+                    mrsbfh::matrix_sdk::events::room::message::MessageEventContent::notice_html(
                         HELP_MARKDOWN,
                         owned_html,
                     ),
                 );
 
                 if let Err(e) = tx.send(content).await {
-                    tracing::error!("Error: {}",e);
+                    mrsbfh::tracing::error!("Error: {}",e);
                 };
             });
 
             Ok(())
         }
-        pub async fn match_command(cmd: &str, config: crate::config::Config<'_>, tx: tokio::sync::mpsc::Sender<matrix_sdk::events::AnyMessageEventContent>, sender: String, args: Vec<&str>,) -> Result<(), crate::errors::ParseErrors> {
-                match cmd {
-                    #(#commands)*
-                    "help" => {
-                        help(tx).await
-                    },
-                    "h" => {
-                        help(tx).await
-                    },
-                    _ => {Ok(())}
-                }
+
+        pub async fn match_command<C: mrsbfh::config::Config>(cmd: &str, config: C, tx: mrsbfh::Sender, sender: String, args: Vec<&str>,) -> Result<(), std::boxed::Box<dyn std::error::Error>> {
+            match cmd {
+                #(#commands)*
+                "help" => {
+                    help(tx).await
+                },
+                "h" => {
+                    help(tx).await
+                },
+                _ => {Ok(())}
             }
+        }
 
     };
     code.into()
+}
+
+#[proc_macro_derive(ConfigDerive)]
+pub fn config_derive(input: TokenStream) -> TokenStream {
+    let ast = parse_macro_input!(input as syn::DeriveInput);
+    let name = &ast.ident;
+
+    let (impl_generics, ty_generics, where_clause) = ast.generics.split_for_impl();
+    let expanded = quote! {
+        impl #impl_generics mrsbfh::config::Config for #name #ty_generics #where_clause {
+            fn load<P: AsRef<std::path::Path> + std::fmt::Debug>(path: P) -> Result<Self, Box<dyn std::error::Error>> {
+                let contents = std::fs::read_to_string(path).expect("Something went wrong reading the file");
+                let config: Self = mrsbfh::serde_yaml::from_str(&contents)?;
+                Ok(config)
+            }
+        }
+    };
+
+    TokenStream::from(expanded)
 }

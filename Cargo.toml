@@ -2,5 +2,6 @@
 
 members = [
     "mrsbfh",
-    "mrsbfh-macros"
+    "mrsbfh-macros",
+    "example-bot"
 ]
