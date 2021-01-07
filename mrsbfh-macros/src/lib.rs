@@ -234,7 +234,7 @@ pub fn autojoin(_: TokenStream, input: TokenStream) -> TokenStream {
                             warn!("Got invite that isn't for us");
                             return;
                         }
-                        if let SyncRoom::Invited(room) = room {
+                        if let mrsbfh::matrix_sdk::SyncRoom::Invited(room) = room {
                             let room_id = {
                                 let room = room.read().await;
                                 room.room_id.clone()
@@ -264,6 +264,105 @@ pub fn autojoin(_: TokenStream, input: TokenStream) -> TokenStream {
                                 }
                                 info!("Successfully joined room {}", room_id);
                             });
+                        }
+                    }
+                };
+                method.block = new_block;
+            }
+        }
+    }
+
+    TokenStream::from(quote! {#input})
+}
+
+/// Used to generate code to detect commands when we get a message for the bot
+///
+/// Requirements:
+///
+/// * Tokio
+/// * Naming of arguments needs to be EXACTLY like in the example
+/// * the async_trait macro needs to be BELOW the commands macro
+/// * The match_command MUST be imported
+///
+/// ```compile_fail
+/// use crate::commands::match_command;
+///
+/// #[mrsbfh::commands::commands]
+/// #[async_trait]
+/// impl EventEmitter for Bot {
+///
+/// async fn on_room_message(&self, room: SyncRoom, event: &SyncMessageEvent<MessageEventContent>) {
+///         // Your own logic. (Executed BEFORE the commands matching)
+///     }
+/// }
+/// ```
+///
+#[proc_macro_attribute]
+pub fn commands(_: TokenStream, input: TokenStream) -> TokenStream {
+    let mut input = parse_macro_input!(input as syn::ItemImpl);
+    let items = &mut input.items;
+
+    for item in items {
+        if let syn::ImplItem::Method(method) = item {
+            if method.sig.ident.to_string() == "on_room_message" {
+                let original = method.block.clone();
+                let new_block = syn::parse_quote! {
+                    {
+                        #original
+
+                        // Command matching logic
+                        if let mrsbfh::matrix_sdk::SyncRoom::Joined(room) = room {
+                            let msg_body = if let mrsbfh::matrix_sdk::events::SyncMessageEvent {
+                                content: mrsbfh::matrix_sdk::events::room::message::MessageEventContent::Text(mrsbfh::matrix_sdk::events::room::message::TextMessageEventContent { body: msg_body, .. }),
+                                ..
+                            } = event
+                            {
+                                msg_body.clone()
+                            } else {
+                                String::new()
+                            };
+                            if msg_body.is_empty() {
+                                return;
+                            }
+
+                            let sender = event.sender.clone().to_string();
+
+                            let (tx, mut rx) = mpsc::channel(100);
+                            let room_id = room.read().await.clone().room_id;
+
+                            let cloned_config = self.config.clone();
+                            tokio::spawn(async move {
+                                let mut split = msg_body.split_whitespace();
+
+                                let command_raw = split.next().expect("This is not a command");
+                                let command = command_raw.to_lowercase();
+                                info!("Got command: {}", command);
+
+                                // Make sure this is immutable
+                                let args: Vec<&str> = split.collect();
+                                if let Err(e) = match_command(
+                                    command.replace("!", "").as_str(),
+                                    cloned_config.clone(),
+                                    tx,
+                                    sender,
+                                    args,
+                                )
+                                .await
+                                {
+                                    error!("{}", e);
+                                }
+                            });
+
+                            while let Some(v) = rx.recv().await {
+                                if let Err(e) = self
+                                    .client
+                                    .clone()
+                                    .room_send(&room_id.clone(), v, None)
+                                    .await
+                                {
+                                    error!("{}", e);
+                                }
+                            }
                         }
                     }
                 };
