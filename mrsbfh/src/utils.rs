@@ -3,6 +3,8 @@ use std::error::Error;
 use std::path::PathBuf;
 use tracing::*;
 
+pub use mrsbfh_macros::autojoin;
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Session {
     /// The homeserver used for this session.

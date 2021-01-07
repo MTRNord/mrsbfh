@@ -1,5 +1,4 @@
 pub(crate) mod utils;
-
 use crate::utils::get_arg;
 use convert_case::{Case, Casing};
 use proc_macro::TokenStream;
@@ -191,4 +190,87 @@ pub fn config_derive(input: TokenStream) -> TokenStream {
     };
 
     TokenStream::from(expanded)
+}
+
+/// Used to generate code to autojoin when we get a invite for the bot
+///
+/// Requirements:
+///
+/// * Tokio
+/// * Naming of arguments needs to be EXACTLY like in the example
+/// * the async_trait macro needs to be BELOW the autojoin macro
+///
+/// ```compile_fail
+/// #[mrsbfh::utils::autojoin]
+/// #[async_trait]
+/// impl EventEmitter for Bot {
+///
+/// async fn on_stripped_state_member(
+///         &self,
+///         room: SyncRoom,
+///         room_member: &StrippedStateEvent<MemberEventContent>,
+///         _: Option<MemberEventContent>,
+///     ) {
+///         // Your own logic. (Executed BEFORE the autojoin)
+///     }
+/// }
+/// ```
+///
+#[proc_macro_attribute]
+pub fn autojoin(_: TokenStream, input: TokenStream) -> TokenStream {
+    let mut input = parse_macro_input!(input as syn::ItemImpl);
+    let items = &mut input.items;
+
+    for item in items {
+        if let syn::ImplItem::Method(method) = item {
+            if method.sig.ident.to_string() == "on_stripped_state_member" {
+                let original = method.block.clone();
+                let new_block = syn::parse_quote! {
+                    {
+                        #original
+
+                        // Autojoin logic
+                        if room_member.state_key != self.client.user_id().await.unwrap() {
+                            warn!("Got invite that isn't for us");
+                            return;
+                        }
+                        if let SyncRoom::Invited(room) = room {
+                            let room_id = {
+                                let room = room.read().await;
+                                room.room_id.clone()
+                            };
+                            let client = self.client.clone();
+
+                            tokio::spawn(async move {
+                                info!("Autojoining room {}", room_id);
+                                let mut delay = 2;
+
+                                while let Err(err) = client.join_room_by_id(&room_id).await {
+                                    // retry autojoin due to synapse sending invites, before the
+                                    // invited user can join for more information see
+                                    // https://github.com/matrix-org/synapse/issues/4345
+                                    error!(
+                                        "Failed to join room {} ({:?}), retrying in {}s",
+                                        room_id, err, delay
+                                    );
+
+                                    tokio::time::delay_for(tokio::time::Duration::from_secs(delay)).await;
+                                    delay *= 2;
+
+                                    if delay > 3600 {
+                                        error!("Can't join room {} ({:?})", room_id, err);
+                                        break;
+                                    }
+                                }
+                                info!("Successfully joined room {}", room_id);
+                            });
+                        }
+                    }
+                };
+                method.block = new_block;
+            }
+        }
+    }
+
+    TokenStream::from(quote! {#input})
 }

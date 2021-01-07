@@ -2,8 +2,9 @@ use crate::commands::match_command;
 use crate::config::Config;
 use mrsbfh::matrix_sdk::{
     events::{
+        room::member::MemberEventContent,
         room::message::{MessageEventContent, TextMessageEventContent},
-        SyncMessageEvent,
+        StrippedStateEvent, SyncMessageEvent,
     },
     Client, EventEmitter, SyncRoom,
 };
@@ -26,6 +27,7 @@ impl Bot {
     }
 }
 
+#[mrsbfh::utils::autojoin]
 #[async_trait]
 impl EventEmitter for Bot {
     async fn on_room_message(&self, room: SyncRoom, event: &SyncMessageEvent<MessageEventContent>) {
@@ -82,5 +84,14 @@ impl EventEmitter for Bot {
                 }
             }
         }
+    }
+
+    async fn on_stripped_state_member(
+        &self,
+        room: SyncRoom,
+        room_member: &StrippedStateEvent<MemberEventContent>,
+        _: Option<MemberEventContent>,
+    ) {
+        println!("test")
     }
 }
