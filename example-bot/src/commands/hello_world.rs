@@ -1,11 +1,11 @@
+use matrix_sdk::events::{room::message::MessageEventContent, AnyMessageEventContent};
 use mrsbfh::commands::command;
 use mrsbfh::config::Config;
-use mrsbfh::matrix_sdk::events::{room::message::MessageEventContent, AnyMessageEventContent};
 use std::error::Error;
 
 #[command(help = "`!hello_world` - Prints \"hello world\".")]
 pub async fn hello_world<C: Config>(
-    mut tx: mrsbfh::Sender,
+    tx: mrsbfh::Sender,
     _config: C,
     _sender: String,
     mut _args: Vec<&str>,

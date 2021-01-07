@@ -141,8 +141,8 @@ pub fn command_generate(args: TokenStream, input: TokenStream) -> TokenStream {
             let owned_html = html.to_owned();
 
             mrsbfh::tokio::spawn(async move {
-                let content = mrsbfh::matrix_sdk::events::AnyMessageEventContent::RoomMessage(
-                    mrsbfh::matrix_sdk::events::room::message::MessageEventContent::notice_html(
+                let content = matrix_sdk::events::AnyMessageEventContent::RoomMessage(
+                    matrix_sdk::events::room::message::MessageEventContent::notice_html(
                         HELP_MARKDOWN,
                         owned_html,
                     ),
@@ -223,7 +223,7 @@ pub fn autojoin(_: TokenStream, input: TokenStream) -> TokenStream {
 
     for item in items {
         if let syn::ImplItem::Method(method) = item {
-            if method.sig.ident.to_string() == "on_stripped_state_member" {
+            if method.sig.ident == "on_stripped_state_member" {
                 let original = method.block.clone();
                 let new_block = syn::parse_quote! {
                     {
@@ -234,7 +234,7 @@ pub fn autojoin(_: TokenStream, input: TokenStream) -> TokenStream {
                             warn!("Got invite that isn't for us");
                             return;
                         }
-                        if let mrsbfh::matrix_sdk::SyncRoom::Invited(room) = room {
+                        if let matrix_sdk::SyncRoom::Invited(room) = room {
                             let room_id = {
                                 let room = room.read().await;
                                 room.room_id.clone()
@@ -254,7 +254,7 @@ pub fn autojoin(_: TokenStream, input: TokenStream) -> TokenStream {
                                         room_id, err, delay
                                     );
 
-                                    tokio::time::delay_for(tokio::time::Duration::from_secs(delay)).await;
+                                    tokio::time::sleep(tokio::time::Duration::from_secs(delay)).await;
                                     delay *= 2;
 
                                     if delay > 3600 {
@@ -304,16 +304,16 @@ pub fn commands(_: TokenStream, input: TokenStream) -> TokenStream {
 
     for item in items {
         if let syn::ImplItem::Method(method) = item {
-            if method.sig.ident.to_string() == "on_room_message" {
+            if method.sig.ident == "on_room_message" {
                 let original = method.block.clone();
                 let new_block = syn::parse_quote! {
                     {
                         #original
 
                         // Command matching logic
-                        if let mrsbfh::matrix_sdk::SyncRoom::Joined(room) = room {
-                            let msg_body = if let mrsbfh::matrix_sdk::events::SyncMessageEvent {
-                                content: mrsbfh::matrix_sdk::events::room::message::MessageEventContent::Text(mrsbfh::matrix_sdk::events::room::message::TextMessageEventContent { body: msg_body, .. }),
+                        if let matrix_sdk::SyncRoom::Joined(room) = room {
+                            let msg_body = if let matrix_sdk::events::SyncMessageEvent {
+                                content: matrix_sdk::events::room::message::MessageEventContent::Text(matrix_sdk::events::room::message::TextMessageEventContent { body: msg_body, .. }),
                                 ..
                             } = event
                             {

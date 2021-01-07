@@ -8,12 +8,7 @@ edition = "2018"
 
 [dependencies.matrix-sdk]
 git = "https://github.com/matrix-org/matrix-rust-sdk.git"
-#rev = "d4327d4cfcc0aa2dfb3d0c59cc55bc03634b5977"
-branch = "fix-signatures"
-[dependencies.matrix-sdk-common-macros]
-git = "https://github.com/matrix-org/matrix-rust-sdk.git"
-#rev = "d4327d4cfcc0aa2dfb3d0c59cc55bc03634b5977"
-branch = "fix-signatures"
+rev = "b311a31c9ef942c357ceb16f07586246655191ce"
 
 [dependencies]
 url = "2.1.1"
@@ -22,7 +17,7 @@ url = "2.1.1"
 mrsbfh-macros = {path = "../mrsbfh-macros"}
 const-concat = {git = "https://github.com/Vurich/const-concat", rev = "f836e77a4ecadf6a11994340fdcbbdadcdc4906d"}
 
-tokio = { version = "0.2", features = ["full"] }
+tokio = { version = "1.0.1", features = ["full"] }
 tracing = "0.1"
 
 serde = "1.0"

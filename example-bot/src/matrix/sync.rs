@@ -1,13 +1,13 @@
 use crate::commands::match_command;
 use crate::config::Config;
-use mrsbfh::matrix_sdk::{
+use matrix_sdk::async_trait;
+use matrix_sdk::{
     events::{
         room::member::MemberEventContent, room::message::MessageEventContent, StrippedStateEvent,
         SyncMessageEvent,
     },
     Client, EventEmitter, SyncRoom,
 };
-use mrsbfh::matrix_sdk_common_macros::async_trait;
 use tokio::sync::mpsc;
 use tracing::*;
 

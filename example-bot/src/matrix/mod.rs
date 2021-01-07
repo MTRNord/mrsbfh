@@ -1,5 +1,5 @@
 use crate::config::Config;
-use mrsbfh::matrix_sdk::{Client, ClientConfig, Session as SDKSession, SyncSettings};
+use matrix_sdk::{Client, ClientConfig, Session as SDKSession, SyncSettings};
 use mrsbfh::url::Url;
 use mrsbfh::utils::Session;
 use std::convert::TryFrom;
@@ -30,8 +30,7 @@ pub async fn setup(config: Config<'_>) -> Result<Client, Box<dyn Error>> {
         let session = SDKSession {
             access_token: session.access_token,
             device_id: session.device_id.into(),
-            user_id: mrsbfh::matrix_sdk::identifiers::UserId::try_from(session.user_id.as_str())
-                .unwrap(),
+            user_id: matrix_sdk::identifiers::UserId::try_from(session.user_id.as_str()).unwrap(),
         };
 
         if let Err(e) = client.restore_login(session).await {
