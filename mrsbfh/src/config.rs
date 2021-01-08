@@ -37,7 +37,7 @@ use std::path::Path;
 use crate::errors::ConfigError;
 pub use mrsbfh_macros::ConfigDerive;
 
-pub trait Config {
+pub trait Loader {
     fn load<P: AsRef<Path> + std::fmt::Debug>(path: P) -> Result<Self, ConfigError>
     where
         Self: Sized + Serialize + DeserializeOwned;

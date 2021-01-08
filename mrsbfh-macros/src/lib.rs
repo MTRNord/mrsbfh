@@ -10,7 +10,7 @@ use syn::spanned::Spanned;
 ///
 /// ```compile_fail
 /// #[command(help = "Description")]
-/// async fn hello_world<C: mrsbfh::config::Config>(mut tx: mrsbfh::Sender, config: C, sender: String, mut args: Vec<&str>) -> Result<(), Box<dyn std::error::Error>> {}
+/// async fn hello_world(mut tx: mrsbfh::Sender, config: Config, sender: String, mut args: Vec<&str>) -> Result<(), Box<dyn std::error::Error>> where Config: mrsbfh::config::Loader + Clone {}
 /// ```
 #[proc_macro_attribute]
 pub fn command(args: TokenStream, input: TokenStream) -> TokenStream {
@@ -156,7 +156,7 @@ pub fn command_generate(args: TokenStream, input: TokenStream) -> TokenStream {
             Ok(())
         }
 
-        pub async fn match_command<C: mrsbfh::config::Config + Clone>(cmd: &str, config: C, tx: mrsbfh::Sender, sender: String, args: Vec<&str>,) -> Result<(), Error> {
+        pub async fn match_command<'a>(cmd: &str, config: Config<'a>, tx: mrsbfh::Sender, sender: String, args: Vec<&str>,) -> Result<(), Error> where Config<'a>: mrsbfh::config::Loader + Clone {
             match cmd {
                 #(#commands)*
                 "help" => {
@@ -180,7 +180,7 @@ pub fn config_derive(input: TokenStream) -> TokenStream {
 
     let (impl_generics, ty_generics, where_clause) = ast.generics.split_for_impl();
     let expanded = quote! {
-        impl #impl_generics mrsbfh::config::Config for #name #ty_generics #where_clause {
+        impl #impl_generics mrsbfh::config::Loader for #name #ty_generics #where_clause {
             fn load<P: AsRef<std::path::Path> + std::fmt::Debug>(path: P) -> Result<Self, mrsbfh::errors::ConfigError> {
                 let contents = std::fs::read_to_string(path)?;
                 let config: Self = mrsbfh::serde_yaml::from_str(&contents)?;

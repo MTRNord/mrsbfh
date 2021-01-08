@@ -1,6 +1,6 @@
 use crate::config::Config;
 use clap::Clap;
-use mrsbfh::config::Config as _;
+use mrsbfh::config::Loader;
 use std::error::Error;
 use tracing::*;
 

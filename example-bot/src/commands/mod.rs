@@ -1,3 +1,4 @@
+use crate::config::Config;
 use crate::errors::Error;
 use mrsbfh::commands::command_generate;
 

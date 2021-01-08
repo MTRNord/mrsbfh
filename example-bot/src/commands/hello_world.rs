@@ -1,15 +1,18 @@
+use crate::config::Config;
 use crate::errors::Error;
 use matrix_sdk::events::{room::message::MessageEventContent, AnyMessageEventContent};
 use mrsbfh::commands::command;
-use mrsbfh::config::Config;
 
 #[command(help = "`!hello_world` - Prints \"hello world\".")]
-pub async fn hello_world<C: Config>(
+pub async fn hello_world<'a>(
     tx: mrsbfh::Sender,
-    _config: C,
+    _config: Config<'a>,
     _sender: String,
     mut _args: Vec<&str>,
-) -> Result<(), Error> {
+) -> Result<(), Error>
+where
+    Config<'a>: mrsbfh::config::Loader + Clone,
+{
     let content =
         AnyMessageEventContent::RoomMessage(MessageEventContent::notice_plain("Hello World!"));
 
