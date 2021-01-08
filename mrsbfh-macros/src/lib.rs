@@ -21,7 +21,7 @@ pub fn command(args: TokenStream, input: TokenStream) -> TokenStream {
     let help_const_name = syn::Ident::new(
         &format!(
             "{}_HELP",
-            input.sig.ident.to_string().to_uppercase().replace("r#", "")
+            input.sig.ident.to_string().to_uppercase().replace("R#", "")
         ),
         input.sig.span(),
     );
