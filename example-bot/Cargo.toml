@@ -8,7 +8,7 @@ edition = "2018"
 
 [dependencies.matrix-sdk]
 git = "https://github.com/matrix-org/matrix-rust-sdk.git"
-rev = "b311a31c9ef942c357ceb16f07586246655191ce"
+rev = "4f2cad8f626068f05d567588d8398d0952536a46"
 
 [dependencies]
 mrsbfh = {path = "../mrsbfh"}
@@ -16,7 +16,7 @@ serde = "1.0"
 tracing = "0.1"
 tracing-subscriber = "0.2"
 tracing-futures = "0.2.4"
-tokio = { version = "1.0.1", features = ["full"] }
+tokio = { version = "0.2", features = ["full"] }
 clap = "3.0.0-beta.2"
 async-trait = "0.1.41"
 thiserror = "1.0"

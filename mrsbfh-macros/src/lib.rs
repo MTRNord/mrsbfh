@@ -254,7 +254,7 @@ pub fn autojoin(_: TokenStream, input: TokenStream) -> TokenStream {
                                         room_id, err, delay
                                     );
 
-                                    tokio::time::sleep(tokio::time::Duration::from_secs(delay)).await;
+                                    tokio::time::delay_for(tokio::time::Duration::from_secs(delay)).await;
                                     delay *= 2;
 
                                     if delay > 3600 {

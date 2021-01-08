@@ -5,7 +5,7 @@ use mrsbfh::commands::command;
 
 #[command(help = "`!hello_world` - Prints \"hello world\".")]
 pub async fn hello_world<'a>(
-    tx: mrsbfh::Sender,
+    mut tx: mrsbfh::Sender,
     _config: Config<'a>,
     _sender: String,
     mut _args: Vec<&str>,
