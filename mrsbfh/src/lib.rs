@@ -24,6 +24,7 @@
 
 pub mod commands;
 pub mod config;
+pub mod errors;
 pub mod utils;
 
 pub type Sender = tokio::sync::mpsc::Sender<matrix_sdk::events::AnyMessageEventContent>;

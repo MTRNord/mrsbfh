@@ -181,8 +181,8 @@ pub fn config_derive(input: TokenStream) -> TokenStream {
     let (impl_generics, ty_generics, where_clause) = ast.generics.split_for_impl();
     let expanded = quote! {
         impl #impl_generics mrsbfh::config::Config for #name #ty_generics #where_clause {
-            fn load<P: AsRef<std::path::Path> + std::fmt::Debug>(path: P) -> Result<Self, Box<dyn std::error::Error>> {
-                let contents = std::fs::read_to_string(path).expect("Something went wrong reading the file");
+            fn load<P: AsRef<std::path::Path> + std::fmt::Debug>(path: P) -> Result<Self, mrsbfh::errors::ConfigError> {
+                let contents = std::fs::read_to_string(path)?;
                 let config: Self = mrsbfh::serde_yaml::from_str(&contents)?;
                 Ok(config)
             }

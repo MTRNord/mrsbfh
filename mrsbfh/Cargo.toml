@@ -13,6 +13,8 @@ rev = "b311a31c9ef942c357ceb16f07586246655191ce"
 [dependencies]
 url = "2.1.1"
 
+thiserror = "1.0"
+
 # Command macros
 mrsbfh-macros = {path = "../mrsbfh-macros"}
 const-concat = {git = "https://github.com/Vurich/const-concat", rev = "f836e77a4ecadf6a11994340fdcbbdadcdc4906d"}
