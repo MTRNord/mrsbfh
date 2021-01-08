@@ -156,7 +156,7 @@ pub fn command_generate(args: TokenStream, input: TokenStream) -> TokenStream {
             Ok(())
         }
 
-        pub async fn match_command<C: mrsbfh::config::Config>(cmd: &str, config: C, tx: mrsbfh::Sender, sender: String, args: Vec<&str>,) -> Result<(), Error> {
+        pub async fn match_command<C: mrsbfh::config::Config + Clone>(cmd: &str, config: C, tx: mrsbfh::Sender, sender: String, args: Vec<&str>,) -> Result<(), Error> {
             match cmd {
                 #(#commands)*
                 "help" => {
