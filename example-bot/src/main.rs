@@ -6,6 +6,7 @@ use tracing::*;
 
 pub mod commands;
 mod config;
+mod errors;
 mod matrix;
 
 #[derive(Clap)]

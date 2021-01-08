@@ -133,7 +133,7 @@ pub fn command_generate(args: TokenStream, input: TokenStream) -> TokenStream {
 
         async fn help(
             mut tx: mrsbfh::Sender,
-        ) -> Result<(), std::boxed::Box<dyn std::error::Error>> {
+        ) -> Result<(), Error> {
             let options = mrsbfh::pulldown_cmark::Options::empty();
             let parser = mrsbfh::pulldown_cmark::Parser::new_ext(HELP_MARKDOWN, options);
             let mut html = String::new();
@@ -156,7 +156,7 @@ pub fn command_generate(args: TokenStream, input: TokenStream) -> TokenStream {
             Ok(())
         }
 
-        pub async fn match_command<C: mrsbfh::config::Config>(cmd: &str, config: C, tx: mrsbfh::Sender, sender: String, args: Vec<&str>,) -> Result<(), std::boxed::Box<dyn std::error::Error>> {
+        pub async fn match_command<C: mrsbfh::config::Config>(cmd: &str, config: C, tx: mrsbfh::Sender, sender: String, args: Vec<&str>,) -> Result<(), Error> {
             match cmd {
                 #(#commands)*
                 "help" => {
