@@ -103,6 +103,7 @@ use serde::{Deserialize, Serialize};
 use std::error::Error;
 use std::path::PathBuf;
 use tracing::*;
+use crate::errors::SessionError;
 
 pub use mrsbfh_macros::autojoin;
 
@@ -119,7 +120,7 @@ pub struct Session {
 }
 
 impl Session {
-    pub fn save(&self, session_path: PathBuf) -> Result<(), Box<dyn Error>> {
+    pub fn save(&self, session_path: PathBuf) -> Result<(), SessionError> {
         let mut session_path: PathBuf = session_path;
         info!("SessionPath: {:?}", session_path);
         std::fs::create_dir_all(&session_path)?;
