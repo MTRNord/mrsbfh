@@ -342,6 +342,7 @@ pub fn commands(_: TokenStream, input: TokenStream) -> TokenStream {
                                 let args: Vec<&str> = split.collect();
                                 if let Err(e) = match_command(
                                     command.replace("!", "").as_str(),
+                                    self.client.clone(),
                                     cloned_config.clone(),
                                     tx,
                                     sender,
