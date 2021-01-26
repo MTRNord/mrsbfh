@@ -340,9 +340,10 @@ pub fn commands(_: TokenStream, input: TokenStream) -> TokenStream {
 
                                 // Make sure this is immutable
                                 let args: Vec<&str> = split.collect();
+                                let cloned_client = self.client.clone();
                                 if let Err(e) = match_command(
                                     command.replace("!", "").as_str(),
-                                    self.client.clone(),
+                                    cloned_client.clone(),
                                     cloned_config.clone(),
                                     tx,
                                     sender,
