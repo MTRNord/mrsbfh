@@ -80,10 +80,10 @@ pub fn command_generate(args: TokenStream, input: TokenStream) -> TokenStream {
 
         quote! {
             #command_string => {
-                #command::#command(tx, config, sender, args).await
+                #command::#command(client, tx, config, sender, args).await
             },
             #command_short => {
-                #command::#command(tx, config, sender, args).await
+                #command::#command(client, tx, config, sender, args).await
             },
         }
     });
@@ -156,7 +156,7 @@ pub fn command_generate(args: TokenStream, input: TokenStream) -> TokenStream {
             Ok(())
         }
 
-        pub async fn match_command<'a>(cmd: &str, config: Config<'a>, tx: mrsbfh::Sender, sender: String, args: Vec<&str>,) -> Result<(), Error> where Config<'a>: mrsbfh::config::Loader + Clone {
+        pub async fn match_command<'a>(cmd: &str, client: matrix_sdk::Client, config: Config<'a>, tx: mrsbfh::Sender, sender: String, args: Vec<&str>,) -> Result<(), Error> where Config<'a>: mrsbfh::config::Loader + Clone {
             match cmd {
                 #(#commands)*
                 "help" => {
