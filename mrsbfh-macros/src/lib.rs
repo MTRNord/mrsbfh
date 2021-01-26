@@ -331,6 +331,7 @@ pub fn commands(_: TokenStream, input: TokenStream) -> TokenStream {
                             let room_id = room.read().await.clone().room_id;
 
                             let cloned_config = self.config.clone();
+                            let cloned_client = self.client.clone();
                             tokio::spawn(async move {
                                 let mut split = msg_body.split_whitespace();
 
@@ -340,7 +341,6 @@ pub fn commands(_: TokenStream, input: TokenStream) -> TokenStream {
 
                                 // Make sure this is immutable
                                 let args: Vec<&str> = split.collect();
-                                let cloned_client = self.client.clone();
                                 if let Err(e) = match_command(
                                     command.replace("!", "").as_str(),
                                     cloned_client.clone(),
