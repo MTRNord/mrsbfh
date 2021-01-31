@@ -333,7 +333,7 @@ pub fn commands(_: TokenStream, input: TokenStream) -> TokenStream {
                             let cloned_config = self.config.clone();
                             let cloned_client = self.client.clone();
                             tokio::spawn(async move {
-                                let whitespace_deduplicator_magic = Regex::new(r"\s+").unwrap();
+                                let whitespace_deduplicator_magic = regex::Regex::new(r"\s+").unwrap();
                                 let normalized_body = whitespace_deduplicator_magic.replace_all(&msg_body, " ");
                                 let mut split = msg_body.split_whitespace();
 
