@@ -7,8 +7,7 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies.matrix-sdk]
-git = "https://github.com/matrix-org/matrix-rust-sdk.git"
-rev = "4f2cad8f626068f05d567588d8398d0952536a46"
+version = "0.2"
 
 [dependencies]
 mrsbfh = {path = "../mrsbfh"}
