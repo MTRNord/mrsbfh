@@ -99,12 +99,12 @@
 //! in the example.
 //!
 
+use crate::errors::SessionError;
 use serde::{Deserialize, Serialize};
-use std::error::Error;
 use std::path::PathBuf;
 use tracing::*;
-use crate::errors::SessionError;
 
+#[cfg(feature = "macros")]
 pub use mrsbfh_macros::autojoin;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

@@ -119,4 +119,5 @@
 //! in the example.
 //!
 
+#[cfg(feature = "macros")]
 pub use mrsbfh_macros::{command, command_generate, commands};
