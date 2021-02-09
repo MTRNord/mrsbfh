@@ -29,6 +29,44 @@ pub mod utils;
 
 pub type Sender = tokio::sync::mpsc::Sender<matrix_sdk::events::AnyMessageEventContent>;
 
+#[async_trait::async_trait]
+pub trait MatrixMessageExt {
+    async fn send_notice(
+        &mut self,
+        body: String,
+        formatted_body: Option<String>,
+    ) -> Result<(), tokio::sync::mpsc::error::SendError<matrix_sdk::events::AnyMessageEventContent>>;
+}
+
+#[async_trait::async_trait]
+impl MatrixMessageExt for Sender {
+    async fn send_notice(
+        &mut self,
+        body: String,
+        formatted_body: Option<String>,
+    ) -> Result<(), tokio::sync::mpsc::error::SendError<matrix_sdk::events::AnyMessageEventContent>>
+    {
+        match formatted_body {
+            Some(formatted_body) => {
+                let content = matrix_sdk::events::AnyMessageEventContent::RoomMessage(
+                    matrix_sdk::events::room::message::MessageEventContent::notice_html(
+                        body,
+                        formatted_body,
+                    ),
+                );
+
+                self.send(content).await
+            }
+            None => {
+                let content = matrix_sdk::events::AnyMessageEventContent::RoomMessage(
+                    matrix_sdk::events::room::message::MessageEventContent::notice_plain(body),
+                );
+                self.send(content).await
+            }
+        }
+    }
+}
+
 pub use const_concat;
 pub use pulldown_cmark;
 pub use serde_yaml;
