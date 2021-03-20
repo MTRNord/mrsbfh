@@ -16,7 +16,6 @@ thiserror = "1.0"
 
 # Command macros
 mrsbfh-macros = {path = "../mrsbfh-macros", optional = true}
-const-concat = {git = "https://github.com/Vurich/const-concat", rev = "f836e77a4ecadf6a11994340fdcbbdadcdc4906d"}
 
 tokio = { version = "0.2", features = ["full"] }
 tracing = "0.1"

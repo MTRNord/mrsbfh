@@ -2,9 +2,11 @@ use crate::config::Config;
 use crate::errors::Error;
 use matrix_sdk::events::{room::message::MessageEventContent, AnyMessageEventContent};
 use mrsbfh::commands::command;
+use matrix_sdk::Client;
 
 #[command(help = "`!hello_world` - Prints \"hello world\".")]
 pub async fn hello_world<'a>(
+    _client: Client,
     mut tx: mrsbfh::Sender,
     _config: Config<'a>,
     _sender: String,

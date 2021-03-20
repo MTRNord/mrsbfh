@@ -67,7 +67,6 @@ impl MatrixMessageExt for Sender {
     }
 }
 
-pub use const_concat;
 pub use pulldown_cmark;
 pub use serde_yaml;
 pub use tokio;

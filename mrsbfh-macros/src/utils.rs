@@ -1,6 +1,6 @@
 use proc_macro::TokenStream;
-use syn::spanned::Spanned;
 use quote::quote;
+use syn::spanned::Spanned;
 
 pub(crate) fn get_arg<'a>(
     input_span: proc_macro2::Span,
@@ -34,7 +34,7 @@ pub(crate) fn get_arg<'a>(
                                 expected, arg
                             ),
                         )
-                            .to_compile_error();
+                        .to_compile_error();
                         Err(quote! {#error}.into())
                     }
                 };
@@ -47,7 +47,7 @@ pub(crate) fn get_arg<'a>(
                     expected, arg
                 ),
             )
-                .to_compile_error();
+            .to_compile_error();
             return Err(quote! {#error}.into());
         }
     }
@@ -58,6 +58,6 @@ pub(crate) fn get_arg<'a>(
             expected
         ),
     )
-        .to_compile_error();
+    .to_compile_error();
     Err(quote! {#error}.into())
 }

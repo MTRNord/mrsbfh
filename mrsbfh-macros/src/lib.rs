@@ -101,6 +101,11 @@ pub fn command_generate(args: TokenStream, input: TokenStream) -> TokenStream {
             #command::#help_command
         }
     });
+    let mut help_format_string = String::from("{}");
+    input.variants.iter().for_each(|_| {
+        help_format_string = format!("{}{}", help_format_string,"{}");
+    });
+
 
     let bot_name = match get_arg(
         input.span(),
@@ -128,14 +133,13 @@ pub fn command_generate(args: TokenStream, input: TokenStream) -> TokenStream {
     let help_preamble = help_title + &description + commands_title;
 
     let code = quote! {
-        use mrsbfh::const_concat::*;
-        const HELP_MARKDOWN: &str = const_concat!(#help_preamble, #(#help_parts,)*);
 
         async fn help(
             mut tx: mrsbfh::Sender,
         ) -> Result<(), Error> {
             let options = mrsbfh::pulldown_cmark::Options::empty();
-            let parser = mrsbfh::pulldown_cmark::Parser::new_ext(HELP_MARKDOWN, options);
+            let help_markdown = format!(#help_format_string, #help_preamble, #(#help_parts,)*);
+            let parser = mrsbfh::pulldown_cmark::Parser::new_ext(&help_markdown, options);
             let mut html = String::new();
             mrsbfh::pulldown_cmark::html::push_html(&mut html, parser);
             let owned_html = html.to_owned();
@@ -143,7 +147,7 @@ pub fn command_generate(args: TokenStream, input: TokenStream) -> TokenStream {
             mrsbfh::tokio::spawn(async move {
                 let content = matrix_sdk::events::AnyMessageEventContent::RoomMessage(
                     matrix_sdk::events::room::message::MessageEventContent::notice_html(
-                        HELP_MARKDOWN,
+                        &help_markdown,
                         owned_html,
                     ),
                 );
