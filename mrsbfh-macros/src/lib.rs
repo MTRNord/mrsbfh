@@ -358,10 +358,7 @@ pub fn commands(_: TokenStream, input: TokenStream) -> TokenStream {
                             });
 
                             while let Some(v) = rx.recv().await {
-                                if let Err(e) = self
-                                    .client
-                                    .clone()
-                                    .room_send(&room_id.clone(), v, None)
+                                if let Err(e) = room.send(v, None)
                                     .await
                                 {
                                     error!("{}", e);
