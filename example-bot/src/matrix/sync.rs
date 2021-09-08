@@ -6,7 +6,7 @@ use matrix_sdk::{
         room::member::MemberEventContent, room::message::MessageEventContent, StrippedStateEvent,
         SyncMessageEvent,
     },
-    Client, EventEmitter, SyncRoom,
+    Client, EventHandler, room::Room,
 };
 use tokio::sync::mpsc;
 use tracing::*;
@@ -29,14 +29,14 @@ impl Bot {
 #[mrsbfh::commands::commands]
 #[mrsbfh::utils::autojoin]
 #[async_trait]
-impl EventEmitter for Bot {
-    async fn on_room_message(&self, room: SyncRoom, event: &SyncMessageEvent<MessageEventContent>) {
+impl EventHandler for Bot {
+    async fn on_room_message(&self, room: Room, event: &SyncMessageEvent<MessageEventContent>) {
         println!("message example")
     }
 
     async fn on_stripped_state_member(
         &self,
-        room: SyncRoom,
+        room: Room,
         room_member: &StrippedStateEvent<MemberEventContent>,
         _: Option<MemberEventContent>,
     ) {

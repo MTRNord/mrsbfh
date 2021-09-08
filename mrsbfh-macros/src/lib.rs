@@ -103,9 +103,8 @@ pub fn command_generate(args: TokenStream, input: TokenStream) -> TokenStream {
     });
     let mut help_format_string = String::from("{}");
     input.variants.iter().for_each(|_| {
-        help_format_string = format!("{}{}", help_format_string,"{}");
+        help_format_string = format!("{}{}", help_format_string, "{}");
     });
-
 
     let bot_name = match get_arg(
         input.span(),
@@ -230,47 +229,41 @@ pub fn autojoin(_: TokenStream, input: TokenStream) -> TokenStream {
             if method.sig.ident == "on_stripped_state_member" {
                 let original = method.block.clone();
                 let new_block = syn::parse_quote! {
-                    {
-                        #original
+                        {
+                            #original
 
-                        // Autojoin logic
-                        if room_member.state_key != self.client.user_id().await.unwrap() {
-                            warn!("Got invite that isn't for us");
-                            return;
-                        }
-                        if let matrix_sdk::SyncRoom::Invited(room) = room {
-                            let room_id = {
-                                let room = room.read().await;
-                                room.room_id.clone()
-                            };
-                            let client = self.client.clone();
-
-                            tokio::spawn(async move {
-                                info!("Autojoining room {}", room_id);
+                            // Autojoin logic
+                            if room_member.state_key != self.client.user_id().await.unwrap() {
+                                warn!("Got invite that isn't for us");
+                                return;
+                            }
+                            if let matrix_sdk::room::Room::Invited(room) = room {
+                                info!("Autojoining room {}", room.room_id());
                                 let mut delay = 2;
 
-                                while let Err(err) = client.join_room_by_id(&room_id).await {
+                                while let Err(err) = room.accept_invitation().await {
                                     // retry autojoin due to synapse sending invites, before the
                                     // invited user can join for more information see
                                     // https://github.com/matrix-org/synapse/issues/4345
                                     error!(
                                         "Failed to join room {} ({:?}), retrying in {}s",
-                                        room_id, err, delay
+                                        room.room_id(),
+                                        err,
+                                        delay
                                     );
 
-                                    tokio::time::delay_for(tokio::time::Duration::from_secs(delay)).await;
+                                    tokio::time::sleep(tokio::time::Duration::from_secs(delay)).await;
                                     delay *= 2;
 
                                     if delay > 3600 {
-                                        error!("Can't join room {} ({:?})", room_id, err);
+                                        error!("Can't join room {} ({:?})", room.room_id(), err);
                                         break;
                                     }
                                 }
-                                info!("Successfully joined room {}", room_id);
-                            });
+                                info!("Successfully joined room {}", room.room_id());
+                            }
                         }
-                    }
-                };
+                    };
                 method.block = new_block;
             }
         }
@@ -315,9 +308,12 @@ pub fn commands(_: TokenStream, input: TokenStream) -> TokenStream {
                         #original
 
                         // Command matching logic
-                        if let matrix_sdk::SyncRoom::Joined(room) = room {
+                        if let matrix_sdk::room::Room::Joined(room) = room {
                             let msg_body = if let matrix_sdk::events::SyncMessageEvent {
-                                content: matrix_sdk::events::room::message::MessageEventContent::Text(matrix_sdk::events::room::message::TextMessageEventContent { body: msg_body, .. }),
+                                content: matrix_sdk::events::room::message::MessageEventContent {
+                                    msgtype: matrix_sdk::events::room::message::MessageType::Text(matrix_sdk::events::room::message::TextMessageEventContent { body: msg_body, .. }),
+                                    ..
+                                },
                                 ..
                             } = event
                             {
@@ -332,7 +328,7 @@ pub fn commands(_: TokenStream, input: TokenStream) -> TokenStream {
                             let sender = event.sender.clone().to_string();
 
                             let (tx, mut rx) = mpsc::channel(100);
-                            let room_id = room.read().await.clone().room_id;
+                            let room_id = room.room_id();
 
                             let cloned_config = self.config.clone();
                             let cloned_client = self.client.clone();

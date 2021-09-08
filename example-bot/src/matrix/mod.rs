@@ -51,7 +51,7 @@ pub async fn setup(config: Config<'_>) -> Result<Client, Box<dyn Error>> {
             Ok(login_response) => {
                 info!("Session: {:#?}", login_response);
                 let session = Session {
-                    homeserver: client.homeserver().to_string(),
+                    homeserver: client.homeserver().await.to_string(),
                     user_id: login_response.user_id.to_string(),
                     access_token: login_response.access_token,
                     device_id: login_response.device_id.into(),
@@ -73,7 +73,7 @@ pub async fn start_sync(
     config: Config<'static>,
 ) -> Result<(), Box<dyn Error>> {
     client
-        .add_event_emitter(Box::new(sync::Bot::new(client.clone(), config.clone())))
+        .set_event_handler(Box::new(sync::Bot::new(client.clone(), config.clone())))
         .await;
 
     info!("Starting full Sync...");
