@@ -1,13 +1,14 @@
+cargo-features = ["edition2021"]
 [package]
 name = "mrsbfh"
 version = "0.1.0"
 authors = ["MTRNord <mtrnord1@gmail.com>"]
-edition = "2018"
+edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies.matrix-sdk]
-version = "0.2"
+version = "0.3"
 
 [dependencies]
 url = "2.2.1"
@@ -17,7 +18,7 @@ thiserror = "1.0"
 # Command macros
 mrsbfh-macros = {path = "../mrsbfh-macros", optional = true}
 
-tokio = { version = "0.2", features = ["full"] }
+tokio = { version = "1", features = ["full"] }
 tracing = "0.1"
 
 serde = "1.0"
