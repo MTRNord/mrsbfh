@@ -341,7 +341,7 @@ pub fn commands(_: TokenStream, input: TokenStream) -> TokenStream {
                                 let command_raw = split.next().expect("This is not a command").to_lowercase();
                                 let command = command_matcher_magic.captures(command_raw.as_str())
                                                                    .map_or(String::new(), |caps| {
-                                                                        caps.get(0)
+                                                                        caps.get(1)
                                                                             .map_or(String::new(),
                                                                                     |m| String::from(m.as_str()))
                                                                    });
