@@ -229,41 +229,41 @@ pub fn autojoin(_: TokenStream, input: TokenStream) -> TokenStream {
             if method.sig.ident == "on_stripped_state_member" {
                 let original = method.block.clone();
                 let new_block = syn::parse_quote! {
-                        {
-                            #original
+                    {
+                        #original
 
-                            // Autojoin logic
-                            if room_member.state_key != self.client.user_id().await.unwrap() {
-                                warn!("Got invite that isn't for us");
-                                return;
-                            }
-                            if let matrix_sdk::room::Room::Invited(room) = room {
-                                info!("Autojoining room {}", room.room_id());
-                                let mut delay = 2;
-
-                                while let Err(err) = room.accept_invitation().await {
-                                    // retry autojoin due to synapse sending invites, before the
-                                    // invited user can join for more information see
-                                    // https://github.com/matrix-org/synapse/issues/4345
-                                    error!(
-                                        "Failed to join room {} ({:?}), retrying in {}s",
-                                        room.room_id(),
-                                        err,
-                                        delay
-                                    );
-
-                                    tokio::time::sleep(tokio::time::Duration::from_secs(delay)).await;
-                                    delay *= 2;
-
-                                    if delay > 3600 {
-                                        error!("Can't join room {} ({:?})", room.room_id(), err);
-                                        break;
-                                    }
-                                }
-                                info!("Successfully joined room {}", room.room_id());
-                            }
+                        // Autojoin logic
+                        if room_member.state_key != self.client.user_id().await.unwrap() {
+                            warn!("Got invite that isn't for us");
+                            return;
                         }
-                    };
+                        if let matrix_sdk::room::Room::Invited(room) = room {
+                            info!("Autojoining room {}", room.room_id());
+                            let mut delay = 2;
+
+                            while let Err(err) = room.accept_invitation().await {
+                                // retry autojoin due to synapse sending invites, before the
+                                // invited user can join for more information see
+                                // https://github.com/matrix-org/synapse/issues/4345
+                                error!(
+                                    "Failed to join room {} ({:?}), retrying in {}s",
+                                    room.room_id(),
+                                    err,
+                                    delay
+                                );
+
+                                tokio::time::sleep(tokio::time::Duration::from_secs(delay)).await;
+                                delay *= 2;
+
+                                if delay > 3600 {
+                                    error!("Can't join room {} ({:?})", room.room_id(), err);
+                                    break;
+                                }
+                            }
+                            info!("Successfully joined room {}", room.room_id());
+                        }
+                    }
+                };
                 method.block = new_block;
             }
         }
@@ -334,17 +334,24 @@ pub fn commands(_: TokenStream, input: TokenStream) -> TokenStream {
                             let cloned_client = self.client.clone();
                             tokio::spawn(async move {
                                 let whitespace_deduplicator_magic = regex::Regex::new(r"\s+").unwrap();
+                                let command_matcher_magic = regex::Regex::new(r"!([\w-]+)").unwrap();
                                 let normalized_body = whitespace_deduplicator_magic.replace_all(&msg_body, " ");
                                 let mut split = msg_body.split_whitespace();
 
-                                let command_raw = split.next().expect("This is not a command");
-                                let command = command_raw.to_lowercase();
-                                info!("Got command: {}", command);
-
+                                let command_raw = split.next().expect("This is not a command").to_lowercase();
+                                let command = command_matcher_magic.captures(command_raw.as_str())
+                                                                   .map_or(String::new(), |caps| {
+                                                                        caps.get(0)
+                                                                            .map_or(String::new(),
+                                                                                    |m| String::from(m.as_str()))
+                                                                   });
+                                if !command.is_empty() {
+                                   info!("Got command: {}", command);
+                                }
                                 // Make sure this is immutable
                                 let args: Vec<&str> = split.collect();
                                 if let Err(e) = match_command(
-                                    command.replace("!", "").as_str(),
+                                    command.as_str(),
                                     cloned_client.clone(),
                                     cloned_config.clone(),
                                     tx,
@@ -355,6 +362,7 @@ pub fn commands(_: TokenStream, input: TokenStream) -> TokenStream {
                                 {
                                     error!("{}", e);
                                 }
+
                             });
 
                             while let Some(v) = rx.recv().await {
