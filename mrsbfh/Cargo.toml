@@ -7,6 +7,9 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[package.metadata.docs.rs]
+features = ["docs"]
+rustdoc-args = ["--cfg", "feature=\"docs\""]
 
 [dependencies.matrix-sdk]
 version = "0.3"
@@ -37,3 +40,4 @@ lazy_static = "1"
 [features]
 default = ["macros"]
 macros = ["mrsbfh-macros"]
+docs = ["macros", "matrix-sdk/encryption", "matrix-sdk/sled_cryptostore", "matrix-sdk/sled_state_store", "matrix-sdk/require_auth_for_profile_requests", "matrix-sdk/native-tls"]
