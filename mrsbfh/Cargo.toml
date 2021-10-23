@@ -21,7 +21,7 @@ thiserror = "1.0"
 # Command macros
 mrsbfh-macros = {path = "../mrsbfh-macros", optional = true}
 
-tokio = { version = "1", features = ["full"] }
+tokio = { version = "1", features =["rt", "rt-multi-thread", "macros"]}
 tracing = "0.1"
 
 serde = "1.0"
@@ -32,6 +32,7 @@ pulldown-cmark = "0.8.0" # For generating the help text
 
 regex = "1.4"
 async-trait = "0.1"
+lazy_static = "1"
 
 [features]
 default = ["macros"]

@@ -333,13 +333,15 @@ pub fn commands(_: TokenStream, input: TokenStream) -> TokenStream {
                             let cloned_config = self.config.clone();
                             let cloned_client = self.client.clone();
                             tokio::spawn(async move {
-                                let whitespace_deduplicator_magic = regex::Regex::new(r"\s+").unwrap();
-                                let command_matcher_magic = regex::Regex::new(r"!([\w-]+)").unwrap();
-                                let normalized_body = whitespace_deduplicator_magic.replace_all(&msg_body, " ");
+                                lazy_static! {
+                                    static ref WHITESPACE_DEDUPLICATOR_MAGIC: regex::Regex = regex::Regex::new(r"\s+").unwrap();
+                                    static ref COMMAND_MATCHER_MAGIC: regex::Regex = regex::Regex::new(r"!([\w-]+)").unwrap();
+                                }
+                                let normalized_body = WHITESPACE_DEDUPLICATOR_MAGIC.replace_all(&msg_body, " ");
                                 let mut split = msg_body.split_whitespace();
 
                                 let command_raw = split.next().expect("This is not a command").to_lowercase();
-                                let command = command_matcher_magic.captures(command_raw.as_str())
+                                let command = COMMAND_MATCHER_MAGIC.captures(command_raw.as_str())
                                                                    .map_or(String::new(), |caps| {
                                                                         caps.get(1)
                                                                             .map_or(String::new(),

@@ -67,6 +67,7 @@ impl MatrixMessageExt for Sender {
     }
 }
 
+pub use lazy_static::lazy_static;
 pub use pulldown_cmark;
 pub use serde_yaml;
 pub use tokio;
