@@ -1,6 +1,6 @@
 [package]
 name = "mrsbfh"
-version = "0.1.2"
+version = "0.2.0"
 authors = ["MTRNord <mtrnord1@gmail.com>"]
 edition = "2021"
 description = "A toolkit for writing commandbots more efficient in rust for matrix."
@@ -11,7 +11,7 @@ categories = ["network-programming"]
 readme = "../README.md"
 
 [dependencies.matrix-sdk]
-version = "0.3"
+version = "0.4.1"
 default_features = false
 features = ["encryption", "sled_cryptostore", "sled_state_store", "require_auth_for_profile_requests"]
 
@@ -21,7 +21,7 @@ url = "2.2.1"
 thiserror = "1.0"
 
 # Command macros
-mrsbfh-macros = {version = "0.1.0", path = "../mrsbfh-macros", optional = true}
+mrsbfh-macros = {version = "0.2.0", path = "../mrsbfh-macros", optional = true}
 
 tokio = { version = "1", features = ["full"] }
 tracing = "0.1"

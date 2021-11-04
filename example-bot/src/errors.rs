@@ -1,4 +1,4 @@
-use matrix_sdk::events::AnyMessageEventContent;
+use matrix_sdk::ruma::events::AnyMessageEventContent;
 use thiserror::Error as ThisError;
 
 #[derive(ThisError, Debug)]

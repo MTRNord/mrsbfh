@@ -9,8 +9,11 @@ use syn::spanned::Spanned;
 /// Used to define a command
 ///
 /// ```compile_fail
+/// use std::sync::Arc;
+/// use tokio::sync::Mutex;
+///
 /// #[command(help = "Description")]
-/// async fn hello_world(mut tx: mrsbfh::Sender, config: Config, sender: String, mut args: Vec<&str>) -> Result<(), Box<dyn std::error::Error>> where Config: mrsbfh::config::Loader + Clone {}
+/// async fn hello_world(mut tx: mrsbfh::Sender, config: Arc<Mutex<Config>>, sender: String, mut args: Vec<&str>) -> Result<(), Box<dyn std::error::Error>> where Config: mrsbfh::config::Loader + Clone {}
 /// ```
 #[proc_macro_attribute]
 pub fn command(args: TokenStream, input: TokenStream) -> TokenStream {
@@ -144,8 +147,8 @@ pub fn command_generate(args: TokenStream, input: TokenStream) -> TokenStream {
             let owned_html = html.to_owned();
 
             mrsbfh::tokio::spawn(async move {
-                let content = matrix_sdk::events::AnyMessageEventContent::RoomMessage(
-                    matrix_sdk::events::room::message::MessageEventContent::notice_html(
+                let content = matrix_sdk::ruma::events::AnyMessageEventContent::RoomMessage(
+                    matrix_sdk::ruma::events::room::message::MessageEventContent::notice_html(
                         &help_markdown,
                         owned_html,
                     ),
@@ -159,7 +162,7 @@ pub fn command_generate(args: TokenStream, input: TokenStream) -> TokenStream {
             Ok(())
         }
 
-        pub async fn match_command<'a>(cmd: &str, client: matrix_sdk::Client, config: Config<'a>, tx: mrsbfh::Sender, sender: String, room_id: matrix_sdk::identifiers::RoomId, args: Vec<&str>,) -> Result<(), Error> where Config<'a>: mrsbfh::config::Loader + Clone {
+        pub async fn match_command<'a>(cmd: &str, client: matrix_sdk::Client, config: std::sync::Arc<tokio::sync::Mutex<Config<'a>>>, tx: mrsbfh::Sender, sender: String, room_id: matrix_sdk::ruma::RoomId, args: Vec<&str>,) -> Result<(), Error> where Config<'a>: mrsbfh::config::Loader + Clone {
             match cmd {
                 #(#commands)*
                 "help" => {
@@ -195,88 +198,12 @@ pub fn config_derive(input: TokenStream) -> TokenStream {
     TokenStream::from(expanded)
 }
 
-/// Used to generate code to autojoin when we get a invite for the bot
-///
-/// Requirements:
-///
-/// * Tokio
-/// * Naming of arguments needs to be EXACTLY like in the example
-/// * the async_trait macro needs to be BELOW the autojoin macro
-///
-/// ```compile_fail
-/// #[mrsbfh::utils::autojoin]
-/// #[async_trait]
-/// impl EventEmitter for Bot {
-///
-/// async fn on_stripped_state_member(
-///         &self,
-///         room: SyncRoom,
-///         room_member: &StrippedStateEvent<MemberEventContent>,
-///         _: Option<MemberEventContent>,
-///     ) {
-///         // Your own logic. (Executed BEFORE the autojoin)
-///     }
-/// }
-/// ```
-///
-#[proc_macro_attribute]
-pub fn autojoin(_: TokenStream, input: TokenStream) -> TokenStream {
-    let mut input = parse_macro_input!(input as syn::ItemImpl);
-    let items = &mut input.items;
-
-    for item in items {
-        if let syn::ImplItem::Method(method) = item {
-            if method.sig.ident == "on_stripped_state_member" {
-                let original = method.block.clone();
-                let new_block = syn::parse_quote! {
-                    {
-                        #original
-
-                        // Autojoin logic
-                        if room_member.state_key != self.client.user_id().await.unwrap() {
-                            warn!("Got invite that isn't for us");
-                            return;
-                        }
-                        if let matrix_sdk::room::Room::Invited(room) = room {
-                            info!("Autojoining room {}", room.room_id());
-                            let mut delay = 2;
-
-                            while let Err(err) = room.accept_invitation().await {
-                                // retry autojoin due to synapse sending invites, before the
-                                // invited user can join for more information see
-                                // https://github.com/matrix-org/synapse/issues/4345
-                                error!(
-                                    "Failed to join room {} ({:?}), retrying in {}s",
-                                    room.room_id(),
-                                    err,
-                                    delay
-                                );
-
-                                tokio::time::sleep(tokio::time::Duration::from_secs(delay)).await;
-                                delay *= 2;
-
-                                if delay > 3600 {
-                                    error!("Can't join room {} ({:?})", room.room_id(), err);
-                                    break;
-                                }
-                            }
-                            info!("Successfully joined room {}", room.room_id());
-                        }
-                    }
-                };
-                method.block = new_block;
-            }
-        }
-    }
-
-    TokenStream::from(quote! {#input})
-}
-
 /// Used to generate code to detect commands when we get a message for the bot
 ///
 /// Requirements:
 ///
 /// * Tokio
+/// * Tokio tracing
 /// * Naming of arguments needs to be EXACTLY like in the example
 /// * the async_trait macro needs to be BELOW the commands macro
 /// * The match_command MUST be imported
@@ -285,10 +212,7 @@ pub fn autojoin(_: TokenStream, input: TokenStream) -> TokenStream {
 /// use crate::commands::match_command;
 ///
 /// #[mrsbfh::commands::commands]
-/// #[async_trait]
-/// impl EventEmitter for Bot {
-///
-/// async fn on_room_message(&self, room: SyncRoom, event: &SyncMessageEvent<MessageEventContent>) {
+/// async fn on_room_message(event: SyncMessageEvent<MessageEventContent>, room: Room) {
 ///         // Your own logic. (Executed BEFORE the commands matching)
 ///     }
 /// }
@@ -296,90 +220,85 @@ pub fn autojoin(_: TokenStream, input: TokenStream) -> TokenStream {
 ///
 #[proc_macro_attribute]
 pub fn commands(_: TokenStream, input: TokenStream) -> TokenStream {
-    let mut input = parse_macro_input!(input as syn::ItemImpl);
-    let items = &mut input.items;
+    let mut method = parse_macro_input!(input as syn::ItemFn);
 
-    for item in items {
-        if let syn::ImplItem::Method(method) = item {
-            if method.sig.ident == "on_room_message" {
-                let original = method.block.clone();
-                let new_block = syn::parse_quote! {
+    if method.sig.ident == "on_room_message" {
+        let original = method.block.clone();
+        let new_block = syn::parse_quote! {
+            {
+                #original
+
+                // Command matching logic
+                if let matrix_sdk::room::Room::Joined(room) = room {
+                    let msg_body = if let matrix_sdk::ruma::events::SyncMessageEvent {
+                        content: matrix_sdk::ruma::events::room::message::MessageEventContent {
+                            msgtype: matrix_sdk::ruma::events::room::message::MessageType::Text(matrix_sdk::ruma::events::room::message::TextMessageEventContent { body: msg_body, .. }),
+                            ..
+                        },
+                        ..
+                    } = event
                     {
-                        #original
+                        msg_body.clone()
+                    } else {
+                        String::new()
+                    };
+                    if msg_body.is_empty() {
+                        return;
+                    }
 
-                        // Command matching logic
-                        if let matrix_sdk::room::Room::Joined(room) = room {
-                            let msg_body = if let matrix_sdk::events::SyncMessageEvent {
-                                content: matrix_sdk::events::room::message::MessageEventContent {
-                                    msgtype: matrix_sdk::events::room::message::MessageType::Text(matrix_sdk::events::room::message::TextMessageEventContent { body: msg_body, .. }),
-                                    ..
-                                },
-                                ..
-                            } = event
-                            {
-                                msg_body.clone()
-                            } else {
-                                String::new()
-                            };
-                            if msg_body.is_empty() {
-                                return;
-                            }
+                    let sender = event.sender.clone().to_string();
 
-                            let sender = event.sender.clone().to_string();
+                    let (tx, mut rx) = tokio::sync::mpsc::channel(100);
+                    let room_id = room.room_id().clone();
 
-                            let (tx, mut rx) = mpsc::channel(100);
-                            let room_id = room.room_id().clone();
+                    let cloned_config = config.clone();
+                    let cloned_client = client.clone();
+                    tokio::spawn(async move {
+                        let whitespace_deduplicator_magic = regex::Regex::new(r"\s+").unwrap();
+                        let command_matcher_magic = regex::Regex::new(r"!([\w-]+)").unwrap();
+                        let normalized_body = whitespace_deduplicator_magic.replace_all(&msg_body, " ");
+                        let mut split = msg_body.split_whitespace();
 
-                            let cloned_config = self.config.clone();
-                            let cloned_client = self.client.clone();
-                            tokio::spawn(async move {
-                                let whitespace_deduplicator_magic = regex::Regex::new(r"\s+").unwrap();
-                                let command_matcher_magic = regex::Regex::new(r"!([\w-]+)").unwrap();
-                                let normalized_body = whitespace_deduplicator_magic.replace_all(&msg_body, " ");
-                                let mut split = msg_body.split_whitespace();
+                        let command_raw = split.next().expect("This is not a command").to_lowercase();
+                        let command = command_matcher_magic.captures(command_raw.as_str())
+                                                           .map_or(String::new(), |caps| {
+                                                                caps.get(1)
+                                                                    .map_or(String::new(),
+                                                                            |m| String::from(m.as_str()))
+                                                           });
+                        if !command.is_empty() {
+                           tracing::info!("Got command: {}", command);
+                        }
+                        // Make sure this is immutable
+                        let args: Vec<&str> = split.collect();
+                        if let Err(e) = match_command(
+                            command.as_str(),
+                            cloned_client.clone(),
+                            cloned_config.clone(),
+                            tx,
+                            sender,
+                            room_id,
+                            args,
+                        )
+                        .await
+                        {
+                            tracing::error!("{}", e);
+                        }
 
-                                let command_raw = split.next().expect("This is not a command").to_lowercase();
-                                let command = command_matcher_magic.captures(command_raw.as_str())
-                                                                   .map_or(String::new(), |caps| {
-                                                                        caps.get(1)
-                                                                            .map_or(String::new(),
-                                                                                    |m| String::from(m.as_str()))
-                                                                   });
-                                if !command.is_empty() {
-                                   info!("Got command: {}", command);
-                                }
-                                // Make sure this is immutable
-                                let args: Vec<&str> = split.collect();
-                                if let Err(e) = match_command(
-                                    command.as_str(),
-                                    cloned_client.clone(),
-                                    cloned_config.clone(),
-                                    tx,
-                                    sender,
-                                    room_id,
-                                    args,
-                                )
-                                .await
-                                {
-                                    error!("{}", e);
-                                }
+                    });
 
-                            });
-
-                            while let Some(v) = rx.recv().await {
-                                if let Err(e) = room.send(v, None)
-                                    .await
-                                {
-                                    error!("{}", e);
-                                }
-                            }
+                    while let Some(v) = rx.recv().await {
+                        if let Err(e) = room.send(v, None)
+                            .await
+                        {
+                            tracing::error!("{}", e);
                         }
                     }
-                };
-                method.block = new_block;
+                }
             }
-        }
+        };
+        method.block = new_block;
     }
 
-    TokenStream::from(quote! {#input})
+    TokenStream::from(quote! {#method})
 }
