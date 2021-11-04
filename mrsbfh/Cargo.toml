@@ -12,6 +12,8 @@ readme = "../README.md"
 
 [dependencies.matrix-sdk]
 version = "0.3"
+default_features = false
+features = ["encryption", "sled_cryptostore", "sled_state_store", "require_auth_for_profile_requests"]
 
 [dependencies]
 url = "2.2.1"
@@ -34,5 +36,7 @@ regex = "1.4"
 async-trait = "0.1"
 
 [features]
-default = ["macros"]
+default = ["macros", "native-tls"]
 macros = ["mrsbfh-macros"]
+rustls = ["matrix-sdk/rustls-tls"]
+native-tls = ["matrix-sdk/native-tls"]
