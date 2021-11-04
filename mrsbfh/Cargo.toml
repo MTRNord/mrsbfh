@@ -1,6 +1,6 @@
 [package]
 name = "mrsbfh"
-version = "0.1.1"
+version = "0.1.2"
 authors = ["MTRNord <mtrnord1@gmail.com>"]
 edition = "2021"
 description = "A toolkit for writing commandbots more efficient in rust for matrix."
