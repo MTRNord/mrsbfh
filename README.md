@@ -13,7 +13,7 @@ A toolkit for writing commandbots more efficient in rust for matrix.
 To use it you need to add mrsbfh ust like any regular create:
 
 ```
-mrsbfh = {git = "https://github.com/MTRNord/mrsbfh"}
+mrsbfh = "0.1.0"
 ```
 
 After that there are the possible helpers available that are further described in the docs.

@@ -1,9 +1,11 @@
-cargo-features = ["edition2021"]
 [package]
 name = "example-bot"
 version = "0.1.0"
 authors = ["MTRNord <mtrnord1@gmail.com>"]
 edition = "2021"
+license = "AGPL-3.0-or-later"
+publish = false
+repository = "https://github.com/MTRNord/mrsbfh"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

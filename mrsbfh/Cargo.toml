@@ -1,11 +1,14 @@
-cargo-features = ["edition2021"]
 [package]
 name = "mrsbfh"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["MTRNord <mtrnord1@gmail.com>"]
 edition = "2021"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+description = "A toolkit for writing commandbots more efficient in rust for matrix."
+license = "AGPL-3.0-or-later"
+repository = "https://github.com/MTRNord/mrsbfh"
+keywords = ["matrix", "chat", "framework", "simple", "communication"]
+categories = ["network-programming"]
+readme = "../README.md"
 
 [dependencies.matrix-sdk]
 version = "0.3"
@@ -16,7 +19,7 @@ url = "2.2.1"
 thiserror = "1.0"
 
 # Command macros
-mrsbfh-macros = {path = "../mrsbfh-macros", optional = true}
+mrsbfh-macros = {version = "0.1.0", path = "../mrsbfh-macros", optional = true}
 
 tokio = { version = "1", features = ["full"] }
 tracing = "0.1"
