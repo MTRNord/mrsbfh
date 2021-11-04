@@ -80,10 +80,10 @@ pub fn command_generate(args: TokenStream, input: TokenStream) -> TokenStream {
 
         quote! {
             #command_string => {
-                #command::#command(client, tx, config, sender, args).await
+                #command::#command(client, tx, config, sender, room_id, args).await
             },
             #command_short => {
-                #command::#command(client, tx, config, sender, args).await
+                #command::#command(client, tx, config, sender, room_id, args).await
             },
         }
     });
@@ -159,7 +159,7 @@ pub fn command_generate(args: TokenStream, input: TokenStream) -> TokenStream {
             Ok(())
         }
 
-        pub async fn match_command<'a>(cmd: &str, client: matrix_sdk::Client, config: Config<'a>, tx: mrsbfh::Sender, sender: String, args: Vec<&str>,) -> Result<(), Error> where Config<'a>: mrsbfh::config::Loader + Clone {
+        pub async fn match_command<'a>(cmd: &str, client: matrix_sdk::Client, config: Config<'a>, tx: mrsbfh::Sender, sender: String, room_id: matrix_sdk::identifiers::RoomId, args: Vec<&str>,) -> Result<(), Error> where Config<'a>: mrsbfh::config::Loader + Clone {
             match cmd {
                 #(#commands)*
                 "help" => {
@@ -328,7 +328,7 @@ pub fn commands(_: TokenStream, input: TokenStream) -> TokenStream {
                             let sender = event.sender.clone().to_string();
 
                             let (tx, mut rx) = mpsc::channel(100);
-                            let room_id = room.room_id();
+                            let room_id = room.room_id().clone();
 
                             let cloned_config = self.config.clone();
                             let cloned_client = self.client.clone();
@@ -356,6 +356,7 @@ pub fn commands(_: TokenStream, input: TokenStream) -> TokenStream {
                                     cloned_config.clone(),
                                     tx,
                                     sender,
+                                    room_id,
                                     args,
                                 )
                                 .await
