@@ -119,5 +119,16 @@
 //! in the example.
 //!
 
+pub mod command_utils {
+    use lazy_static::lazy_static;
+
+    lazy_static! {
+        pub static ref WHITESPACE_DEDUPLICATOR_MAGIC: regex::Regex =
+            regex::Regex::new(r"\s+").unwrap();
+        pub static ref COMMAND_MATCHER_MAGIC: regex::Regex =
+            regex::Regex::new(r"!([\w-]+)").unwrap();
+    }
+}
+
 #[cfg(feature = "macros")]
 pub use mrsbfh_macros::{command, command_generate, commands};
