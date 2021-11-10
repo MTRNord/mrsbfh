@@ -2,10 +2,8 @@ use crate::config::Config;
 use matrix_sdk::{Client, ClientConfig, Session as SDKSession, SyncSettings};
 use mrsbfh::url::Url;
 use mrsbfh::utils::Session;
-use std::convert::TryFrom;
-use std::error::Error;
-use std::fs;
-use std::path::Path;
+use std::{convert::TryFrom, error::Error, fs, path::Path, sync::Arc};
+use tokio::sync::Mutex;
 use tracing::*;
 
 mod sync;
@@ -30,7 +28,7 @@ pub async fn setup(config: Config<'_>) -> Result<Client, Box<dyn Error>> {
         let session = SDKSession {
             access_token: session.access_token,
             device_id: session.device_id.into(),
-            user_id: matrix_sdk::identifiers::UserId::try_from(session.user_id.as_str()).unwrap(),
+            user_id: matrix_sdk::ruma::UserId::try_from(session.user_id.as_str()).unwrap(),
         };
 
         if let Err(e) = client.restore_login(session).await {
@@ -72,8 +70,13 @@ pub async fn start_sync(
     client: &mut Client,
     config: Config<'static>,
 ) -> Result<(), Box<dyn Error>> {
+    client.register_event_handler(mrsbfh::sync::autojoin).await;
+
+    let config = Arc::new(Mutex::new(config));
     client
-        .set_event_handler(Box::new(sync::Bot::new(client.clone(), config.clone())))
+        .register_event_handler(move |ev, room, client| {
+            sync::on_room_message(ev, room, client, config.clone())
+        })
         .await;
 
     info!("Starting full Sync...");

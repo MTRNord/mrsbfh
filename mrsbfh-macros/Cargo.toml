@@ -1,15 +1,19 @@
-cargo-features = ["edition2021"]
 [package]
 name = "mrsbfh-macros"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["MTRNord <mtrnord1@gmail.com>"]
 edition = "2021"
+description = "Maros for the mrsbfh crate"
+license = "AGPL-3.0-or-later"
+repository = "https://github.com/MTRNord/mrsbfh"
+keywords = ["matrix", "chat", "framework", "macros", "communication"]
+categories = ["network-programming", "parsing"]
 
 [lib]
 proc-macro = true
 
 [dependencies]
-syn = { version= "1.0", features=["full"] }
+syn = { version= "1.0", features = ["full"] }
 quote = "1.0"
 convert_case = "0.4.0"
 proc-macro2 = "1.0"

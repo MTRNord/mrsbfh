@@ -25,9 +25,10 @@
 pub mod commands;
 pub mod config;
 pub mod errors;
+pub mod sync;
 pub mod utils;
 
-pub type Sender = tokio::sync::mpsc::Sender<matrix_sdk::events::AnyMessageEventContent>;
+pub type Sender = tokio::sync::mpsc::Sender<matrix_sdk::ruma::events::AnyMessageEventContent>;
 
 #[async_trait::async_trait]
 pub trait MatrixMessageExt {
@@ -35,7 +36,10 @@ pub trait MatrixMessageExt {
         &mut self,
         body: String,
         formatted_body: Option<String>,
-    ) -> Result<(), tokio::sync::mpsc::error::SendError<matrix_sdk::events::AnyMessageEventContent>>;
+    ) -> Result<
+        (),
+        tokio::sync::mpsc::error::SendError<matrix_sdk::ruma::events::AnyMessageEventContent>,
+    >;
 }
 
 #[async_trait::async_trait]
@@ -44,12 +48,14 @@ impl MatrixMessageExt for Sender {
         &mut self,
         body: String,
         formatted_body: Option<String>,
-    ) -> Result<(), tokio::sync::mpsc::error::SendError<matrix_sdk::events::AnyMessageEventContent>>
-    {
+    ) -> Result<
+        (),
+        tokio::sync::mpsc::error::SendError<matrix_sdk::ruma::events::AnyMessageEventContent>,
+    > {
         match formatted_body {
             Some(formatted_body) => {
-                let content = matrix_sdk::events::AnyMessageEventContent::RoomMessage(
-                    matrix_sdk::events::room::message::MessageEventContent::notice_html(
+                let content = matrix_sdk::ruma::events::AnyMessageEventContent::RoomMessage(
+                    matrix_sdk::ruma::events::room::message::MessageEventContent::notice_html(
                         body,
                         formatted_body,
                     ),
@@ -58,8 +64,10 @@ impl MatrixMessageExt for Sender {
                 self.send(content).await
             }
             None => {
-                let content = matrix_sdk::events::AnyMessageEventContent::RoomMessage(
-                    matrix_sdk::events::room::message::MessageEventContent::notice_plain(body),
+                let content = matrix_sdk::ruma::events::AnyMessageEventContent::RoomMessage(
+                    matrix_sdk::ruma::events::room::message::MessageEventContent::notice_plain(
+                        body,
+                    ),
                 );
                 self.send(content).await
             }

@@ -104,9 +104,6 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use tracing::*;
 
-#[cfg(feature = "macros")]
-pub use mrsbfh_macros::autojoin;
-
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Session {
     /// The homeserver used for this session.

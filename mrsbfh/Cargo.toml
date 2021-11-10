@@ -1,20 +1,23 @@
-cargo-features = ["edition2021"]
 [package]
 name = "mrsbfh"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["MTRNord <mtrnord1@gmail.com>"]
 edition = "2021"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+description = "A toolkit for writing commandbots more efficient in rust for matrix."
+license = "AGPL-3.0-or-later"
+repository = "https://github.com/MTRNord/mrsbfh"
+keywords = ["matrix", "chat", "framework", "simple", "communication"]
+categories = ["network-programming"]
+readme = "../README.md"
 
 [package.metadata.docs.rs]
 features = ["docs"]
 rustdoc-args = ["--cfg", "feature=\"docs\""]
 
 [dependencies.matrix-sdk]
-version = "0.3"
-# No defaults so that end user can add compiletime flags
-default-features = false
+version = "0.4.1"
+default_features = false
+features = ["encryption", "sled_cryptostore", "sled_state_store", "require_auth_for_profile_requests"]
 
 [dependencies]
 url = "2.2.1"
@@ -22,7 +25,7 @@ url = "2.2.1"
 thiserror = "1.0"
 
 # Command macros
-mrsbfh-macros = {path = "../mrsbfh-macros", optional = true}
+mrsbfh-macros = {version = "0.2.0", path = "../mrsbfh-macros", optional = true}
 
 tokio = { version = "1", features =["rt", "rt-multi-thread", "macros"]}
 tracing = "0.1"
@@ -38,6 +41,7 @@ async-trait = "0.1"
 lazy_static = "1"
 
 [features]
-default = ["macros"]
+default = ["macros", "native-tls"]
 macros = ["mrsbfh-macros"]
-docs = ["macros", "matrix-sdk/encryption", "matrix-sdk/sled_cryptostore", "matrix-sdk/sled_state_store", "matrix-sdk/require_auth_for_profile_requests", "matrix-sdk/native-tls"]
+rustls = ["matrix-sdk/rustls-tls"]
+native-tls = ["matrix-sdk/native-tls"]
