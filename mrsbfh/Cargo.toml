@@ -10,10 +10,6 @@ keywords = ["matrix", "chat", "framework", "simple", "communication"]
 categories = ["network-programming"]
 readme = "../README.md"
 
-[package.metadata.docs.rs]
-features = ["docs"]
-rustdoc-args = ["--cfg", "feature=\"docs\""]
-
 [dependencies.matrix-sdk]
 version = "0.4.1"
 default_features = false
