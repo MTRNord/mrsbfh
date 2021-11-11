@@ -13,7 +13,7 @@ readme = "../README.md"
 [dependencies.matrix-sdk]
 version = "0.4.1"
 default_features = false
-features = ["encryption", "sled_cryptostore", "sled_state_store", "require_auth_for_profile_requests"]
+#features = ["encryption", "sled_cryptostore", "sled_state_store", "require_auth_for_profile_requests"]
 
 [dependencies]
 url = "2.2.1"
@@ -23,7 +23,7 @@ thiserror = "1.0"
 # Command macros
 mrsbfh-macros = {version = "0.2.0", path = "../mrsbfh-macros", optional = true}
 
-tokio = { version = "1", features =["rt", "rt-multi-thread", "macros"]}
+tokio = { version = "1", features = ["rt", "rt-multi-thread", "macros"] }
 tracing = "0.1"
 
 serde = "1.0"
