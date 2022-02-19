@@ -6,5 +6,5 @@ pub mod hello_world;
 
 #[command_generate(bot_name = "Example", description = "This bot prints hello!")]
 enum Commands {
-    HelloWorld,
+    Hello_World,
 }
