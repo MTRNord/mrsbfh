@@ -12,6 +12,13 @@ repository = "https://github.com/MTRNord/mrsbfh"
 [dependencies.matrix-sdk]
 version = "0.4.1"
 
+# To create a bot that uses the Rust implementation of TLS use the default features minus native-tls
+# Ex:
+# [dependencies.matrix-sdk]
+# version = "0.4.1"
+# default_features = false
+# features = ["encryption", "sled_cryptostore", "sled_state_store", "require_auth_for_profile_requests", "rustls-tls"]
+
 [dependencies]
 mrsbfh = {version = "0.2.0", path = "../mrsbfh"}
 serde = "1.0"
