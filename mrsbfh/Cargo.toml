@@ -36,5 +36,7 @@ async-trait = "0.1"
 lazy_static = "1"
 
 [features]
-default = ["macros"]
+default = ["macros", "native-tls"]
 macros = ["mrsbfh-macros"]
+rustls = ["matrix-sdk/rustls-tls"]
+native-tls = ["matrix-sdk/native-tls"]
