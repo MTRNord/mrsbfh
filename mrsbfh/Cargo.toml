@@ -1,6 +1,6 @@
 [package]
 name = "mrsbfh"
-version = "0.3.1"
+version = "0.4.0"
 authors = ["MTRNord <mtrnord1@gmail.com>"]
 edition = "2021"
 description = "A toolkit for writing commandbots more efficient in rust for matrix."
@@ -20,7 +20,7 @@ url = "2.2.2"
 thiserror = "1.0"
 
 # Command macros
-mrsbfh-macros = {version = "0.3.0", path = "../mrsbfh-macros", optional = true}
+mrsbfh-macros = {version = "0.4.0", path = "../mrsbfh-macros", optional = true}
 
 tokio = { version = "1", features = ["rt", "rt-multi-thread", "macros"] }
 tracing = "0.1"
