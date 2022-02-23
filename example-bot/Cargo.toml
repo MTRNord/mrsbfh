@@ -20,7 +20,7 @@ version = "0.4.1"
 # features = ["encryption", "sled_cryptostore", "sled_state_store", "require_auth_for_profile_requests", "rustls-tls"]
 
 [dependencies]
-mrsbfh = {version = "0.2.0", path = "../mrsbfh"}
+mrsbfh = {version = "0.3.0", path = "../mrsbfh"}
 serde = "1.0"
 tracing = "0.1"
 tracing-subscriber = "0.3.1"
