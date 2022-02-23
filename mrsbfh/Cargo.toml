@@ -15,7 +15,7 @@ version = "0.4.1"
 default_features = false
 
 [dependencies]
-url = "2.2.1"
+url = "2.2.2"
 
 thiserror = "1.0"
 
@@ -29,14 +29,14 @@ serde = "1.0"
 serde_yaml = "0.8"
 serde_json = "1"
 
-pulldown-cmark = "0.8.0" # For generating the help text
+pulldown-cmark = {version = "0.9.1", optional = true} # For generating the help text
 
-regex = "1.4"
+regex = "1.5"
 async-trait = "0.1"
 lazy_static = "1"
 
 [features]
 default = ["macros", "native-tls"]
-macros = ["mrsbfh-macros"]
+macros = ["mrsbfh-macros", "pulldown-cmark"]
 rustls = ["matrix-sdk/rustls-tls"]
 native-tls = ["matrix-sdk/native-tls"]

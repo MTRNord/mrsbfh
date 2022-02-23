@@ -23,11 +23,10 @@ version = "0.4.1"
 mrsbfh = {version = "0.3.0", path = "../mrsbfh"}
 serde = "1.0"
 tracing = "0.1"
-tracing-subscriber = "0.3.1"
-tracing-futures = "0.2.4"
+tracing-subscriber = "0.3.9"
+tracing-futures = "0.2.5"
 tokio = { version = "1", features = ["rt", "rt-multi-thread", "sync", "macros"] }
-clap = "=3.0.0-beta.2"
-clap_derive = "=3.0.0-beta.2"
-async-trait = "0.1.41"
+clap = { version = "3.1.1", features = ["derive"] }
+async-trait = "0.1.52"
 thiserror = "1.0"
-regex = "1.4.3"
+regex = "1.5.4"

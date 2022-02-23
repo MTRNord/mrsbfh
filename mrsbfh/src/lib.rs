@@ -75,8 +75,10 @@ impl MatrixMessageExt for Sender {
     }
 }
 
-pub use pulldown_cmark;
 pub use serde_yaml;
 pub use tokio;
 pub use tracing;
 pub use url;
+
+#[cfg(feature = "macros")]
+pub use pulldown_cmark;

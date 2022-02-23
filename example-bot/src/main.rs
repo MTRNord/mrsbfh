@@ -1,5 +1,5 @@
 use crate::config::Config;
-use clap::Clap;
+use clap::Parser;
 use mrsbfh::config::Loader;
 use std::error::Error;
 use tracing::*;
@@ -9,7 +9,7 @@ mod config;
 mod errors;
 mod matrix;
 
-#[derive(Clap)]
+#[derive(Parser, Debug)]
 #[clap(version = "0.1.0", author = "MTRNord")]
 struct Opts {
     #[clap(short, long, default_value = "config.yml")]
