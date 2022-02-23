@@ -1,4 +1,4 @@
-//! # Config
+//! # Helpers to construct a Config
 //!
 //! The Config Trait is used to be able to pass your Config to the commands as well as use them for
 //! the path of the session.
@@ -36,7 +36,6 @@ use std::path::Path;
 
 use crate::errors::ConfigError;
 
-#[cfg(feature = "macros")]
 pub use mrsbfh_macros::ConfigDerive;
 
 pub trait Loader {

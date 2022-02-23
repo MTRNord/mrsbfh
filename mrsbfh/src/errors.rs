@@ -1,3 +1,5 @@
+//! # Errors that the helpers can return
+
 use thiserror::Error;
 
 #[derive(Error, Debug)]

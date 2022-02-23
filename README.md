@@ -13,11 +13,9 @@ A toolkit for writing commandbots more efficient in rust for matrix.
 To use it you need to add mrsbfh just like any regular create:
 
 ```
-mrsbfh = "0.4.0"
+mrsbfh = "0.4.1"
 ```
 
 After that there are the possible helpers available that are further described in the docs.
-
-As there was no release yet, you can open them using `cargo doc -p mrsbfh --open` in any crate depending on it or after cloning the repository.
 
 For a minimal example of the bot checkout the crate under the `example-bot` folder which is a minimal version of what is needed.

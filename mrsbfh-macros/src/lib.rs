@@ -57,7 +57,7 @@ pub fn command(args: TokenStream, input: TokenStream) -> TokenStream {
 /// }
 /// ```
 ///
-/// Note: The defined enum will NOT be present at runtime. It gets replaced fully
+/// **Note**: The defined enum will NOT be present at runtime. It gets replaced fully
 #[proc_macro_attribute]
 pub fn command_generate(args: TokenStream, input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as syn::ItemEnum);
@@ -214,7 +214,6 @@ pub fn config_derive(input: TokenStream) -> TokenStream {
 /// #[mrsbfh::commands::commands]
 /// async fn on_room_message(event: SyncMessageEvent<MessageEventContent>, room: Room) {
 ///         // Your own logic. (Executed BEFORE the commands matching)
-///     }
 /// }
 /// ```
 ///

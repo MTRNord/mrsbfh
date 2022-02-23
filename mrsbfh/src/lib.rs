@@ -16,20 +16,26 @@
 //! * Macro for simple autojoin functionality
 //! * Macros for pretty defining of commands
 //! * Utils for a simple Config
-//! * Utils for restoring ad saving matrix sessions
+//! * Utils for restoring and saving matrix sessions
 //!
 //! ## Examples
 //!
 //! For examples please have a look at the [example-bot](https://github.com/MTRNord/mrsbfh/tree/main/example-bot) or take a look in the individual modules.
 
+#[cfg(feature = "macros")]
 pub mod commands;
+
+#[cfg(feature = "macros")]
 pub mod config;
+
 pub mod errors;
 pub mod sync;
 pub mod utils;
 
+/// A wrapper type for the tokio sender channel with AnyMessageEventContent as content needed in multiple places
 pub type Sender = tokio::sync::mpsc::Sender<matrix_sdk::ruma::events::AnyMessageEventContent>;
 
+/// An extension to simply do notices
 #[async_trait::async_trait]
 pub trait MatrixMessageExt {
     async fn send_notice(
@@ -80,5 +86,6 @@ pub use tokio;
 pub use tracing;
 pub use url;
 
+/// Used for generating the help text with macros
 #[cfg(feature = "macros")]
 pub use pulldown_cmark;

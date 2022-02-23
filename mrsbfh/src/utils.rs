@@ -1,4 +1,4 @@
-//! # Utils
+//! # Various small Utils
 //!
 //! ## Session
 //!
@@ -54,56 +54,13 @@
 //!
 //! If not it creates and saves the [Session](crate::utils::Session) struct. Allowing for a relogin on the next start.
 //!
-//! ## Autojoin
-//!
-//! The [`#[autojoin]`](crate::utils::autojoin) macro is used to generate the logic in the
-//! [EventEmitter](matrix_sdk::EventEmitter) to handle invites for the bot. It is executed after your code.
-//!
-//! The usage is:
-//!
-//! ```compile_fail
-//! use matrix_sdk::async_trait;
-//! use matrix_sdk::{
-//!     events::{
-//!         room::message::MessageEventContent, StrippedStateEvent,
-//!     },
-//!     EventEmitter, SyncRoom, Client
-//! };
-//! use tracing::*;
-//!
-//! #[derive(Debug, Clone)]
-//! pub struct Bot {
-//!     client: Client,
-//! }
-//!
-//! #[mrsbfh::utils::autojoin]
-//! #[async_trait]
-//! impl EventEmitter for Bot {
-//!      async fn on_stripped_state_member(
-//!         &self,
-//!         room: SyncRoom,
-//!         room_member: &StrippedStateEvent<MemberEventContent>,
-//!         _: Option<MemberEventContent>,
-//!     ) {
-//!         println!("autojoin example")
-//!     }
-//! }
-//! ```
-//!
-//! <br>
-//!
-//! **This does have some requirements:**
-//! * The struct MUST have a field `client` which is the [MatrixSDK Client](matrix_sdk::Client)
-//! * The `#[async_trait]` macro MUST be below the `#[autojoin]` macro
-//! * The `on_stripped_state_member` method MUST exist and the arguments MUST be named the way they are named
-//! in the example.
-//!
 
 use crate::errors::SessionError;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use tracing::*;
 
+/// Informations needed to keep track about a session
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Session {
     /// The homeserver used for this session.
@@ -117,15 +74,17 @@ pub struct Session {
 }
 
 impl Session {
+    /// Save the session to the specified path
     pub fn save(&self, session_path: PathBuf) -> Result<(), SessionError> {
         let mut session_path: PathBuf = session_path;
-        info!("SessionPath: {:?}", session_path);
+        debug!("SessionPath: {:?}", session_path);
         std::fs::create_dir_all(&session_path)?;
         session_path.push("session.json");
         serde_json::to_writer(&std::fs::File::create(session_path)?, self)?;
         Ok(())
     }
 
+    /// Load the session from a specified path
     pub fn load(session_path: PathBuf) -> Option<Self> {
         let mut session_path: PathBuf = session_path;
         session_path.push("session.json");

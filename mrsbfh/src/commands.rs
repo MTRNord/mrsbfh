@@ -1,4 +1,4 @@
-//! # Commands
+//! # Helpers to construct Commands
 //!
 //! ## `#[command]` macro
 //!
@@ -6,7 +6,7 @@
 //!
 //! These functions require a specific syntax which is described below.
 //!
-//! Also that function requires you to have a config struct which implements the [Config](crate::config::Config)
+//! Also that function requires you to have a config struct which implements the [Loader](crate::config::Loader)
 //! trait.
 //!
 //! <br>
@@ -17,18 +17,27 @@
 //! In each of these submodules you can define a command like this:
 //!
 //! ```compile_fail
-//! use matrix_sdk::events::{room::message::MessageEventContent, AnyMessageEventContent};
+//! use crate::config::Config;
+//! use crate::errors::Error;
+//! use matrix_sdk::ruma::events::{room::message::MessageEventContent, AnyMessageEventContent};
+//! use matrix_sdk::ruma::RoomId;
+//! use matrix_sdk::Client;
 //! use mrsbfh::commands::command;
-//! use mrsbfh::config::Config;
-//! use std::error::Error;
+//! use std::sync::Arc;
+//! use tokio::sync::Mutex;
 //!
 //! #[command(help = "`!hello_world` - Prints \"hello world\".")]
-//! pub async fn hello_world<C: Config>(
+//! pub async fn hello_world<'a>(
+//!     _client: Client,
 //!     tx: mrsbfh::Sender,
-//!     _config: C,
+//!     _config: Arc<Mutex<Config<'a>>>,
 //!     _sender: String,
+//!     _room_id: RoomId,
 //!     mut _args: Vec<&str>,
-//! ) -> Result<(), Box<dyn Error>> {
+//! ) -> Result<(), Error>
+//! where
+//!     Config<'a>: mrsbfh::config::Loader + Clone,
+//! {
 //!     let content =
 //!         AnyMessageEventContent::RoomMessage(MessageEventContent::notice_plain("Hello World!"));
 //!
@@ -57,15 +66,15 @@
 //!     description = "This bot prints hello!"
 //! )]
 //! enum Commands {
-//!     HelloWorld
+//!     Hello_World
 //! }
 //! ```
 //!
 //! This does generate a `match_command` function which takes the following arguments:
 //!
-//! `(command: &str, config: C, tx: mrsbfh::Sender, sender: String, args: Vec<&str>)`
+//! `(client: Client, tx: mrsbfh::Sender, config: Arc<Mutex<Config<'a>>>, sender: String, room_id: RoomId, args: Vec<&str>)`
 //!
-//! and it returns: `Result<(), Box<dyn Error>>`.
+//! and it returns: `Result<(), Error>` where Error is an Error struct you provide.
 //!
 //! This can either be called by you or you can continue reading and instead use another macro to
 //! do this for you.
@@ -74,10 +83,10 @@
 //!
 //! ## `#[commands]` macro
 //!
-//! This macro is used to generate the logic in the [EventEmitter](matrix_sdk::EventEmitter) to
+//! This macro is used to generate the logic in the [register_event_handler](matrix_sdk::Client::register_event_handler) method to
 //! handle commands after your code.
 //!
-//! The usage is:
+//! The definition is:
 //!
 //! ```compile_fail
 //! use crate::commands::match_command;
@@ -88,35 +97,36 @@
 //!         room::message::MessageEventContent,
 //!         SyncMessageEvent,
 //!     },
-//!     Client, EventEmitter, SyncRoom,
+//!     Client, SyncRoom,
 //! };
 //! use tracing::*;
 //!
-//! #[derive(Debug, Clone)]
-//! pub struct Bot {
-//!     client: Client,
-//!     config: Config<'static>,
-//! }
 //!
 //! #[mrsbfh::commands::commands]
-//! #[async_trait]
-//! impl EventEmitter for Bot {
-//!     async fn on_room_message(&self, room: SyncRoom, event: &SyncMessageEvent<MessageEventContent>) {
-//!         println!("message example")
-//!     }
+//! pub(crate) async fn on_room_message(
+//!     event: SyncMessageEvent<MessageEventContent>,
+//!     room: Room,
+//!     client: Client,
+//!     config: Arc<Mutex<Config<'static>>>,
+//! ) {
+//!     println!("message example")
 //! }
+//! ```
+//!
+//! You use it using this snippet:
+//!
+//! ```
+//! client
+//!     .register_event_handler(move |ev, room, client| {
+//!         sync::on_room_message(ev, room, client, config.clone())
+//!     })
+//!     .await;
 //! ```
 //!
 //! <br>
 //!
 //! **This does have some requirements:**
 //! * Your `match_command` function MUST be imported
-//! * The struct MUST have a field `config` which implements the [Config](crate::config::Config)
-//! trait
-//! * The struct MUST have a field `client` which is the [MatrixSDK Client](matrix_sdk::Client)
-//! * The `#[async_trait]` macro MUST be below the `#[commands]` macro
-//! * The `on_room_message` method MUST exist and the arguments MUST be named the way they are named
-//! in the example.
 //!
 
 pub mod command_utils {
@@ -130,5 +140,4 @@ pub mod command_utils {
     }
 }
 
-#[cfg(feature = "macros")]
 pub use mrsbfh_macros::{command, command_generate, commands};
