@@ -137,7 +137,7 @@ pub fn command_generate(args: TokenStream, input: TokenStream) -> TokenStream {
 
     let code = quote! {
         async fn help(
-           mrsbfh::commands::extract::Extension(tx): mrsbfh::commands::extract::Extension<std::sync::Arc<mrsbfh::Sender>>,
+           mrsbfh::commands::extract::Extension(tx): mrsbfh::commands::extract::Extension<std::sync::Arc<mrsbfh::tokio::sync::Mutex<mrsbfh::Sender>>>,
         ) -> Result<(), mrsbfh::errors::Errors> {
             let options = mrsbfh::pulldown_cmark::Options::empty();
             let help_markdown = format!(#help_format_string, #help_preamble, #(#help_parts,)*);
@@ -154,7 +154,7 @@ pub fn command_generate(args: TokenStream, input: TokenStream) -> TokenStream {
                     ),
                 );
 
-                if let Err(e) = tx.send(content).await {
+                if let Err(e) = tx.lock().await.send(content).await {
                     mrsbfh::tracing::error!("Error: {}",e);
                 };
             });
@@ -285,7 +285,7 @@ pub fn commands(_: TokenStream, input: TokenStream) -> TokenStream {
                     let cloned_room = room.clone();
                     tokio::spawn(async move {
                         let normalized_body = mrsbfh::commands::command_utils::WHITESPACE_DEDUPLICATOR_MAGIC.replace_all(&msg_body, " ");
-                        let cloned_body = normalized_body.clone();
+                        let cloned_body = dbg!(normalized_body).clone();
                         let mut split = cloned_body.split_whitespace().map(|x|x.to_string());
 
                         let command_raw = split.next().expect("This is not a command").to_lowercase();
@@ -301,7 +301,7 @@ pub fn commands(_: TokenStream, input: TokenStream) -> TokenStream {
                         // Make sure this is immutable
                         let args_raw: Vec<String> = split.collect();
                         let args: std::sync::Arc<Vec<String>> = std::sync::Arc::new(args_raw.clone());
-                        let tx = std::sync::Arc::new(std::sync::Mutex::new(tx));
+                        let tx = std::sync::Arc::new(mrsbfh::tokio::sync::Mutex::new(tx));
 
                         let mut msg = mrsbfh::commands::Message::new();
                         msg.extensions_mut().insert(std::sync::Arc::clone(&args));

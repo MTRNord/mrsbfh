@@ -15,5 +15,4 @@ pub(crate) async fn on_room_message(
     client: Client,
     config: Arc<Mutex<Config<'static>>>,
 ) {
-    println!("message example")
 }
