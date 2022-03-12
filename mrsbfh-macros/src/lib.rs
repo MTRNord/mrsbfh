@@ -2,9 +2,10 @@ pub(crate) mod utils;
 use crate::utils::get_arg;
 use convert_case::{Case, Casing};
 use proc_macro::TokenStream;
+use proc_macro2::Span;
 use quote::quote;
-use syn::parse_macro_input;
 use syn::spanned::Spanned;
+use syn::{parse_macro_input, Ident};
 
 /// Used to define a command
 ///
@@ -219,6 +220,37 @@ pub fn config_derive(input: TokenStream) -> TokenStream {
 #[proc_macro_attribute]
 pub fn commands(_: TokenStream, input: TokenStream) -> TokenStream {
     let mut method = parse_macro_input!(input as syn::ItemFn);
+    let arguments = method.sig.inputs.clone();
+
+    let message_magic = arguments.iter().map(|argument| {
+        if let syn::FnArg::Typed(arg_type) = argument {
+            if let syn::Pat::Ident(ref raw_ident) = *arg_type.pat {
+                if let syn::Type::Path(ref path) = *arg_type.ty {
+                    let ident = &raw_ident.ident;
+                    if path
+                        .path
+                        .segments
+                        .iter()
+                        .any(|x| x.ident == Ident::new("Arc", Span::call_site()))
+                    {
+                        quote! {
+                            msg.extensions_mut().insert(std::sync::Arc::clone(&#ident));
+                        }
+                    } else {
+                        quote! {
+                            msg.extensions_mut().insert(std::sync::Arc::new(#ident.clone()));
+                        }
+                    }
+                } else {
+                    quote! {}
+                }
+            } else {
+                quote! {}
+            }
+        } else {
+            quote! {}
+        }
+    });
 
     if method.sig.ident == "on_room_message" {
         let original = method.block.clone();
@@ -234,7 +266,7 @@ pub fn commands(_: TokenStream, input: TokenStream) -> TokenStream {
                             ..
                         },
                         ..
-                    } = event
+                    } = event.clone()
                     {
                         msg_body.clone()
                     } else {
@@ -250,9 +282,10 @@ pub fn commands(_: TokenStream, input: TokenStream) -> TokenStream {
                     let room_id = room.room_id().clone();
 
                     let cloned_client = client.clone();
+                    let cloned_room = room.clone();
                     tokio::spawn(async move {
                         let normalized_body = mrsbfh::commands::command_utils::WHITESPACE_DEDUPLICATOR_MAGIC.replace_all(&msg_body, " ");
-                        let cloned_body = msg_body.clone();
+                        let cloned_body = normalized_body.clone();
                         let mut split = cloned_body.split_whitespace().map(|x|x.to_string());
 
                         let command_raw = split.next().expect("This is not a command").to_lowercase();
@@ -271,10 +304,9 @@ pub fn commands(_: TokenStream, input: TokenStream) -> TokenStream {
                         let tx = std::sync::Arc::new(std::sync::Mutex::new(tx));
 
                         let mut msg = mrsbfh::commands::Message::new();
-                        // TODO insert all the things in the function args
                         msg.extensions_mut().insert(std::sync::Arc::clone(&args));
                         msg.extensions_mut().insert(std::sync::Arc::clone(&tx));
-                        msg.extensions_mut().insert(std::sync::Arc::clone(&config));
+                        #(#message_magic)*
                         if let Err(e) = match_command(
                             command.as_str(),
                             msg
@@ -287,7 +319,7 @@ pub fn commands(_: TokenStream, input: TokenStream) -> TokenStream {
                     });
 
                     while let Some(v) = rx.recv().await {
-                        if let Err(e) = room.send(v, None)
+                        if let Err(e) = cloned_room.send(v, None)
                             .await
                         {
                             tracing::error!("{}", e);
