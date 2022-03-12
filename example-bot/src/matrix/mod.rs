@@ -2,7 +2,8 @@ use crate::config::Config;
 use matrix_sdk::{Client, ClientConfig, Session as SDKSession, SyncSettings};
 use mrsbfh::url::Url;
 use mrsbfh::utils::Session;
-use std::{convert::TryFrom, error::Error, fs, path::Path, sync::Arc};
+use std::sync::Arc;
+use std::{convert::TryFrom, error::Error, fs, path::Path};
 use tokio::sync::Mutex;
 use tracing::*;
 
@@ -42,7 +43,7 @@ pub async fn setup(config: Config<'_>) -> Result<Client, Box<dyn Error>> {
                 &config.mxid,
                 &config.password,
                 None,
-                Some(&"timetracking-bot".to_string()),
+                Some("timetracking-bot"),
             )
             .await;
         match login_response {
@@ -73,9 +74,11 @@ pub async fn start_sync(
     client.register_event_handler(mrsbfh::sync::autojoin).await;
 
     let config = Arc::new(Mutex::new(config));
+    let cloned_config = Arc::clone(&config);
     client
         .register_event_handler(move |ev, room, client| {
-            sync::on_room_message(ev, room, client, config.clone())
+            let cloned_config = Arc::clone(&cloned_config);
+            sync::on_room_message(ev, room, client, cloned_config)
         })
         .await;
 

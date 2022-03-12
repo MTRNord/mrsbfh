@@ -17,3 +17,17 @@ pub enum SessionError {
     #[error(transparent)]
     SerdeError(#[from] serde_json::Error),
 }
+
+#[derive(Error, Debug)]
+pub enum ExtensionRejection {
+    #[error("Extensions taken by other extractor")]
+    ExtensionsAlreadyExtracted,
+    #[error("{0}")]
+    MissingExtension(String),
+}
+
+#[derive(Error, Debug)]
+pub enum Errors {
+    #[error("{0}")]
+    CustomError(String),
+}

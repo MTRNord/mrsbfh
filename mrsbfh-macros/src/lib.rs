@@ -83,10 +83,10 @@ pub fn command_generate(args: TokenStream, input: TokenStream) -> TokenStream {
 
         quote! {
             #command_string => {
-                #command::#command(client, tx, config, sender, room_id, args).await
+                mrsbfh::commands::Command::call(#command::#command, msg).await
             },
             #command_short => {
-                #command::#command(client, tx, config, sender, room_id, args).await
+                mrsbfh::commands::Command::call(#command::#command, msg).await
             },
         }
     });
@@ -135,10 +135,9 @@ pub fn command_generate(args: TokenStream, input: TokenStream) -> TokenStream {
     let help_preamble = help_title + &description + commands_title;
 
     let code = quote! {
-
         async fn help(
-            mut tx: mrsbfh::Sender,
-        ) -> Result<(), Error> {
+           mrsbfh::commands::extract::Extension(tx): mrsbfh::commands::extract::Extension<std::sync::Arc<mrsbfh::Sender>>,
+        ) -> Result<(), mrsbfh::errors::Errors> {
             let options = mrsbfh::pulldown_cmark::Options::empty();
             let help_markdown = format!(#help_format_string, #help_preamble, #(#help_parts,)*);
             let parser = mrsbfh::pulldown_cmark::Parser::new_ext(&help_markdown, options);
@@ -162,14 +161,14 @@ pub fn command_generate(args: TokenStream, input: TokenStream) -> TokenStream {
             Ok(())
         }
 
-        pub async fn match_command<'a>(cmd: &str, client: matrix_sdk::Client, config: std::sync::Arc<tokio::sync::Mutex<Config<'a>>>, tx: mrsbfh::Sender, sender: String, room_id: matrix_sdk::ruma::RoomId, args: Vec<&str>,) -> Result<(), Error> where Config<'a>: mrsbfh::config::Loader + Clone {
+        pub async fn match_command<'a>(cmd: &str, msg: mrsbfh::commands::Message) -> Result<(), impl std::error::Error> {
             match cmd {
                 #(#commands)*
                 "help" => {
-                    help(tx).await
+                    mrsbfh::commands::Command::call(help, msg).await
                 },
                 "h" => {
-                    help(tx).await
+                    mrsbfh::commands::Command::call(help, msg).await
                 },
                 _ => {Ok(())}
             }
@@ -247,14 +246,14 @@ pub fn commands(_: TokenStream, input: TokenStream) -> TokenStream {
 
                     let sender = event.sender.clone().to_string();
 
-                    let (tx, mut rx) = tokio::sync::mpsc::channel(100);
+                    let (tx, mut rx): (mrsbfh::Sender, _) = tokio::sync::mpsc::channel(100);
                     let room_id = room.room_id().clone();
 
-                    let cloned_config = config.clone();
                     let cloned_client = client.clone();
                     tokio::spawn(async move {
                         let normalized_body = mrsbfh::commands::command_utils::WHITESPACE_DEDUPLICATOR_MAGIC.replace_all(&msg_body, " ");
-                        let mut split = msg_body.split_whitespace();
+                        let cloned_body = msg_body.clone();
+                        let mut split = cloned_body.split_whitespace().map(|x|x.to_string());
 
                         let command_raw = split.next().expect("This is not a command").to_lowercase();
                         let command = mrsbfh::commands::command_utils::COMMAND_MATCHER_MAGIC.captures(command_raw.as_str())
@@ -267,15 +266,18 @@ pub fn commands(_: TokenStream, input: TokenStream) -> TokenStream {
                            tracing::info!("Got command: {}", command);
                         }
                         // Make sure this is immutable
-                        let args: Vec<&str> = split.collect();
+                        let args_raw: Vec<String> = split.collect();
+                        let args: std::sync::Arc<Vec<String>> = std::sync::Arc::new(args_raw.clone());
+                        let tx = std::sync::Arc::new(std::sync::Mutex::new(tx));
+
+                        let mut msg = mrsbfh::commands::Message::new();
+                        // TODO insert all the things in the function args
+                        msg.extensions_mut().insert(std::sync::Arc::clone(&args));
+                        msg.extensions_mut().insert(std::sync::Arc::clone(&tx));
+                        msg.extensions_mut().insert(std::sync::Arc::clone(&config));
                         if let Err(e) = match_command(
                             command.as_str(),
-                            cloned_client.clone(),
-                            cloned_config.clone(),
-                            tx,
-                            sender,
-                            room_id,
-                            args,
+                            msg
                         )
                         .await
                         {
