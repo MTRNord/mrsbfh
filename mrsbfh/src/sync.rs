@@ -1,10 +1,6 @@
 //! # Helpers for the sync process
 
-use matrix_sdk::{
-    room::Room,
-    ruma::events::{room::member::MemberEventContent, StrippedStateEvent},
-    Client,
-};
+use matrix_sdk::{room::Room, ruma::events::room::member::StrippedRoomMemberEvent, Client};
 use tracing::*;
 
 /// A small helper to auto join any incitation
@@ -17,11 +13,7 @@ use tracing::*;
 /// delay between tries (numeber_of_tries*2) starting with a delay of 2.
 /// It will print an error with the room id if the delay exceeds 3600s.
 ///
-pub async fn autojoin(
-    room_member: StrippedStateEvent<MemberEventContent>,
-    client: Client,
-    room: Room,
-) {
+pub async fn autojoin(room_member: StrippedRoomMemberEvent, client: Client, room: Room) {
     // Autojoin logic
     if room_member.state_key != client.user_id().await.unwrap() {
         debug!("Got invite that isn't for us");

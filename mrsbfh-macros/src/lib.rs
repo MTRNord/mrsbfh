@@ -3,7 +3,7 @@ use crate::utils::get_arg;
 use convert_case::{Case, Casing};
 use proc_macro::TokenStream;
 use proc_macro2::Span;
-use quote::quote;
+use quote::{quote, quote_spanned};
 use syn::spanned::Spanned;
 use syn::{parse_macro_input, Ident};
 
@@ -146,11 +146,9 @@ pub fn command_generate(args: TokenStream, input: TokenStream) -> TokenStream {
             let owned_html = html.to_owned();
 
             mrsbfh::tokio::spawn(async move {
-                let content = matrix_sdk::ruma::events::AnyMessageEventContent::RoomMessage(
-                    matrix_sdk::ruma::events::room::message::MessageEventContent::notice_html(
-                        &help_markdown,
-                        owned_html,
-                    ),
+                let content = matrix_sdk::ruma::events::room::message::RoomMessageEventContent::notice_html(
+                    &help_markdown,
+                    owned_html,
                 );
 
                 if let Err(e) = tx.lock().await.send(content).await {
@@ -230,10 +228,28 @@ pub fn commands(_: TokenStream, input: TokenStream) -> TokenStream {
                         .path
                         .segments
                         .iter()
-                        .any(|x| x.ident == Ident::new("Arc", Span::call_site()))
-                    {
+                        .any(|x| x.ident == Ident::new("Arc", Span::call_site())) {
                         quote! {
                             msg.extensions_mut().insert(std::sync::Arc::clone(&#ident));
+                        }
+                    } else if path
+                        .path
+                        .segments
+                        .iter()
+                        .any(|x| x.ident == Ident::new("Client", Span::call_site()))
+                        || path
+                        .path
+                        .segments
+                        .iter()
+                        .any(|x| x.ident == Ident::new("Room", Span::call_site())) 
+                        || path
+                        .path
+                        .segments
+                        .iter()
+                        .any(|x| x.ident == Ident::new("OriginalSyncRoomMessageEvent", Span::call_site()))
+                    {
+                        quote! {
+                            msg.extensions_mut().insert(std::sync::Arc::new(mrsbfh::tokio::sync::Mutex::new(#ident.clone())));
                         }
                     } else {
                         quote! {
@@ -241,13 +257,13 @@ pub fn commands(_: TokenStream, input: TokenStream) -> TokenStream {
                         }
                     }
                 } else {
-                    quote! {}
+                    panic!("Unexpected type for argument");
                 }
             } else {
-                quote! {}
+                panic!("Unexpected type for argument");
             }
         } else {
-            quote! {}
+            panic!("Unexpected type for argument");
         }
     });
 
@@ -259,17 +275,9 @@ pub fn commands(_: TokenStream, input: TokenStream) -> TokenStream {
 
                 // Command matching logic
                 if let matrix_sdk::room::Room::Joined(room) = room {
-                    let msg_body = if let matrix_sdk::ruma::events::SyncMessageEvent {
-                        content: matrix_sdk::ruma::events::room::message::MessageEventContent {
-                            msgtype: matrix_sdk::ruma::events::room::message::MessageType::Text(matrix_sdk::ruma::events::room::message::TextMessageEventContent { body: msg_body, .. }),
-                            ..
-                        },
-                        ..
-                    } = event.clone()
-                    {
-                        msg_body.clone()
-                    } else {
-                        String::new()
+                    let msg_body = match event.content.msgtype {
+                        matrix_sdk::ruma::events::room::message::MessageType::Text(matrix_sdk::ruma::events::room::message::TextMessageEventContent { ref body, .. }) => body.clone(),
+                        _ => return,
                     };
                     if msg_body.is_empty() {
                         return;
@@ -299,13 +307,13 @@ pub fn commands(_: TokenStream, input: TokenStream) -> TokenStream {
                         }
                         // Make sure this is immutable
                         let args_raw: Vec<String> = split.collect();
-                        let args: std::sync::Arc<Vec<String>> = std::sync::Arc::new(args_raw.clone());
+                        let args: std::sync::Arc<mrsbfh::tokio::sync::Mutex<Vec<String>>> = std::sync::Arc::new(mrsbfh::tokio::sync::Mutex::new(args_raw.clone()));
                         let tx = std::sync::Arc::new(mrsbfh::tokio::sync::Mutex::new(tx));
 
                         let mut msg = mrsbfh::commands::Message::new();
+                        #(#message_magic)*
                         msg.extensions_mut().insert(std::sync::Arc::clone(&args));
                         msg.extensions_mut().insert(std::sync::Arc::clone(&tx));
-                        #(#message_magic)*
                         if let Err(e) = match_command(
                             command.as_str(),
                             msg
@@ -328,7 +336,9 @@ pub fn commands(_: TokenStream, input: TokenStream) -> TokenStream {
             }
         };
         method.block = new_block;
+    } else {
+        panic!("Function needs to be called `on_room_message`");
     }
 
-    TokenStream::from(quote! {#method})
+    TokenStream::from(quote_spanned! {Span::call_site()=>#method})
 }

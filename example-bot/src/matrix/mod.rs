@@ -1,5 +1,7 @@
 use crate::config::Config;
-use matrix_sdk::{Client, ClientConfig, Session as SDKSession, SyncSettings};
+use matrix_sdk::config::SyncSettings;
+use matrix_sdk::ruma::UserId;
+use matrix_sdk::{Client, Session as SDKSession};
 use mrsbfh::url::Url;
 use mrsbfh::utils::Session;
 use std::sync::Arc;
@@ -16,12 +18,16 @@ pub async fn setup(config: Config<'_>) -> Result<Client, Box<dyn Error>> {
     if !store_path.exists() {
         fs::create_dir_all(store_path)?;
     }
-    let client_config = ClientConfig::new().store_path(fs::canonicalize(&store_path)?);
 
     let homeserver_url =
         Url::parse(&config.homeserver_url).expect("Couldn't parse the homeserver URL");
 
-    let client = Client::new_with_config(homeserver_url, client_config).unwrap();
+    let state_store = matrix_sdk::store::StateStore::open_with_path(store_path)?;
+    let client = Client::builder()
+        .homeserver_url(homeserver_url)
+        .state_store(Box::new(state_store))
+        .build()
+        .await?;
 
     if let Some(session) = Session::load(config.session_path.parse().unwrap()) {
         info!("Starting relogin");
@@ -29,7 +35,9 @@ pub async fn setup(config: Config<'_>) -> Result<Client, Box<dyn Error>> {
         let session = SDKSession {
             access_token: session.access_token,
             device_id: session.device_id.into(),
-            user_id: matrix_sdk::ruma::UserId::try_from(session.user_id.as_str()).unwrap(),
+            user_id: <&UserId>::try_from(session.user_id.as_str())
+                .unwrap()
+                .to_owned(),
         };
 
         if let Err(e) = client.restore_login(session).await {
@@ -53,7 +61,7 @@ pub async fn setup(config: Config<'_>) -> Result<Client, Box<dyn Error>> {
                     homeserver: client.homeserver().await.to_string(),
                     user_id: login_response.user_id.to_string(),
                     access_token: login_response.access_token,
-                    device_id: login_response.device_id.into(),
+                    device_id: login_response.device_id.to_string(),
                 };
                 session.save(config.session_path.parse().unwrap())?;
             }
