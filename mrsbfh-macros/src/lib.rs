@@ -232,28 +232,9 @@ pub fn commands(_: TokenStream, input: TokenStream) -> TokenStream {
                         quote! {
                             msg.extensions_mut().insert(std::sync::Arc::clone(&#ident));
                         }
-                    } else if path
-                        .path
-                        .segments
-                        .iter()
-                        .any(|x| x.ident == Ident::new("Client", Span::call_site()))
-                        || path
-                        .path
-                        .segments
-                        .iter()
-                        .any(|x| x.ident == Ident::new("Room", Span::call_site())) 
-                        || path
-                        .path
-                        .segments
-                        .iter()
-                        .any(|x| x.ident == Ident::new("OriginalSyncRoomMessageEvent", Span::call_site()))
-                    {
-                        quote! {
-                            msg.extensions_mut().insert(std::sync::Arc::new(mrsbfh::tokio::sync::Mutex::new(#ident.clone())));
-                        }
                     } else {
                         quote! {
-                            msg.extensions_mut().insert(std::sync::Arc::new(#ident.clone()));
+                            msg.extensions_mut().insert(std::sync::Arc::new(mrsbfh::tokio::sync::Mutex::new(#ident.clone())));
                         }
                     }
                 } else {
