@@ -10,11 +10,10 @@ use syn::{parse_macro_input, Ident};
 /// Used to define a command
 ///
 /// ```compile_fail
-/// use std::sync::Arc;
-/// use tokio::sync::Mutex;
+/// use mrsbfh::commands::extract::Extension;
 ///
 /// #[command(help = "Description")]
-/// async fn hello_world(mut tx: mrsbfh::Sender, config: Arc<Mutex<Config>>, sender: String, mut args: Vec<&str>) -> Result<(), Box<dyn std::error::Error>> where Config: mrsbfh::config::Loader + Clone {}
+/// async fn hello_world(Extension(tx): Extension<mrsbfh::Sender>,) -> Result<(), Box<dyn std::error::Error>> where Config: mrsbfh::config::Loader + Clone {}
 /// ```
 #[proc_macro_attribute]
 pub fn command(args: TokenStream, input: TokenStream) -> TokenStream {
@@ -137,7 +136,7 @@ pub fn command_generate(args: TokenStream, input: TokenStream) -> TokenStream {
 
     let code = quote! {
         async fn help(
-           mrsbfh::commands::extract::Extension(tx): mrsbfh::commands::extract::Extension<std::sync::Arc<mrsbfh::tokio::sync::Mutex<mrsbfh::Sender>>>,
+           mrsbfh::commands::extract::Extension(tx): mrsbfh::commands::extract::Extension<mrsbfh::Sender>,
         ) -> Result<(), mrsbfh::errors::Errors> {
             let options = mrsbfh::pulldown_cmark::Options::empty();
             let help_markdown = format!(#help_format_string, #help_preamble, #(#help_parts,)*);

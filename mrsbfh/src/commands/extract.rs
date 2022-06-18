@@ -196,7 +196,7 @@ impl Extensions {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct Extension<T>(pub T);
+pub struct Extension<T>(pub Arc<Mutex<T>>);
 
 #[async_trait::async_trait]
 impl<T> FromMessage for Extension<T>
