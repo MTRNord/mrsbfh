@@ -2,18 +2,18 @@ pub(crate) mod utils;
 use crate::utils::get_arg;
 use convert_case::{Case, Casing};
 use proc_macro::TokenStream;
-use quote::quote;
-use syn::parse_macro_input;
+use proc_macro2::Span;
+use quote::{quote, quote_spanned};
 use syn::spanned::Spanned;
+use syn::{parse_macro_input, Ident};
 
 /// Used to define a command
 ///
 /// ```compile_fail
-/// use std::sync::Arc;
-/// use tokio::sync::Mutex;
+/// use mrsbfh::commands::extract::Extension;
 ///
 /// #[command(help = "Description")]
-/// async fn hello_world(mut tx: mrsbfh::Sender, config: Arc<Mutex<Config>>, sender: String, mut args: Vec<&str>) -> Result<(), Box<dyn std::error::Error>> where Config: mrsbfh::config::Loader + Clone {}
+/// async fn hello_world(Extension(tx): Extension<mrsbfh::Sender>,) -> Result<(), Box<dyn std::error::Error>> where Config: mrsbfh::config::Loader + Clone {}
 /// ```
 #[proc_macro_attribute]
 pub fn command(args: TokenStream, input: TokenStream) -> TokenStream {
@@ -83,10 +83,10 @@ pub fn command_generate(args: TokenStream, input: TokenStream) -> TokenStream {
 
         quote! {
             #command_string => {
-                #command::#command(client, tx, config, sender, room_id, args).await
+                mrsbfh::commands::Command::call(#command::#command, msg).await
             },
             #command_short => {
-                #command::#command(client, tx, config, sender, room_id, args).await
+                mrsbfh::commands::Command::call(#command::#command, msg).await
             },
         }
     });
@@ -135,10 +135,9 @@ pub fn command_generate(args: TokenStream, input: TokenStream) -> TokenStream {
     let help_preamble = help_title + &description + commands_title;
 
     let code = quote! {
-
         async fn help(
-            mut tx: mrsbfh::Sender,
-        ) -> Result<(), Error> {
+           mrsbfh::commands::extract::Extension(tx): mrsbfh::commands::extract::Extension<mrsbfh::Sender>,
+        ) -> Result<(), mrsbfh::errors::Errors> {
             let options = mrsbfh::pulldown_cmark::Options::empty();
             let help_markdown = format!(#help_format_string, #help_preamble, #(#help_parts,)*);
             let parser = mrsbfh::pulldown_cmark::Parser::new_ext(&help_markdown, options);
@@ -147,14 +146,12 @@ pub fn command_generate(args: TokenStream, input: TokenStream) -> TokenStream {
             let owned_html = html.to_owned();
 
             mrsbfh::tokio::spawn(async move {
-                let content = matrix_sdk::ruma::events::AnyMessageEventContent::RoomMessage(
-                    matrix_sdk::ruma::events::room::message::MessageEventContent::notice_html(
-                        &help_markdown,
-                        owned_html,
-                    ),
+                let content = matrix_sdk::ruma::events::room::message::RoomMessageEventContent::notice_html(
+                    &help_markdown,
+                    owned_html,
                 );
 
-                if let Err(e) = tx.send(content).await {
+                if let Err(e) = tx.lock().await.send(content).await {
                     mrsbfh::tracing::error!("Error: {}",e);
                 };
             });
@@ -162,14 +159,14 @@ pub fn command_generate(args: TokenStream, input: TokenStream) -> TokenStream {
             Ok(())
         }
 
-        pub async fn match_command<'a>(cmd: &str, client: matrix_sdk::Client, config: std::sync::Arc<tokio::sync::Mutex<Config<'a>>>, tx: mrsbfh::Sender, sender: String, room_id: matrix_sdk::ruma::RoomId, args: Vec<&str>,) -> Result<(), Error> where Config<'a>: mrsbfh::config::Loader + Clone {
+        pub async fn match_command<'a>(cmd: &str, msg: mrsbfh::commands::Message) -> Result<(), impl std::error::Error> {
             match cmd {
                 #(#commands)*
                 "help" => {
-                    help(tx).await
+                    mrsbfh::commands::Command::call(help, msg).await
                 },
                 "h" => {
-                    help(tx).await
+                    mrsbfh::commands::Command::call(help, msg).await
                 },
                 _ => {Ok(())}
             }
@@ -220,6 +217,36 @@ pub fn config_derive(input: TokenStream) -> TokenStream {
 #[proc_macro_attribute]
 pub fn commands(_: TokenStream, input: TokenStream) -> TokenStream {
     let mut method = parse_macro_input!(input as syn::ItemFn);
+    let arguments = method.sig.inputs.clone();
+
+    let message_magic = arguments.iter().map(|argument| {
+        if let syn::FnArg::Typed(arg_type) = argument {
+            if let syn::Pat::Ident(ref raw_ident) = *arg_type.pat {
+                if let syn::Type::Path(ref path) = *arg_type.ty {
+                    let ident = &raw_ident.ident;
+                    if path
+                        .path
+                        .segments
+                        .iter()
+                        .any(|x| x.ident == Ident::new("Arc", Span::call_site())) {
+                        quote! {
+                            msg.extensions_mut().insert(std::sync::Arc::clone(&#ident));
+                        }
+                    } else {
+                        quote! {
+                            msg.extensions_mut().insert(std::sync::Arc::new(mrsbfh::tokio::sync::Mutex::new(#ident.clone())));
+                        }
+                    }
+                } else {
+                    panic!("Unexpected type for argument");
+                }
+            } else {
+                panic!("Unexpected type for argument");
+            }
+        } else {
+            panic!("Unexpected type for argument");
+        }
+    });
 
     if method.sig.ident == "on_room_message" {
         let original = method.block.clone();
@@ -229,17 +256,9 @@ pub fn commands(_: TokenStream, input: TokenStream) -> TokenStream {
 
                 // Command matching logic
                 if let matrix_sdk::room::Room::Joined(room) = room {
-                    let msg_body = if let matrix_sdk::ruma::events::SyncMessageEvent {
-                        content: matrix_sdk::ruma::events::room::message::MessageEventContent {
-                            msgtype: matrix_sdk::ruma::events::room::message::MessageType::Text(matrix_sdk::ruma::events::room::message::TextMessageEventContent { body: msg_body, .. }),
-                            ..
-                        },
-                        ..
-                    } = event
-                    {
-                        msg_body.clone()
-                    } else {
-                        String::new()
+                    let msg_body = match event.content.msgtype {
+                        matrix_sdk::ruma::events::room::message::MessageType::Text(matrix_sdk::ruma::events::room::message::TextMessageEventContent { ref body, .. }) => body.clone(),
+                        _ => return,
                     };
                     if msg_body.is_empty() {
                         return;
@@ -247,14 +266,15 @@ pub fn commands(_: TokenStream, input: TokenStream) -> TokenStream {
 
                     let sender = event.sender.clone().to_string();
 
-                    let (tx, mut rx) = tokio::sync::mpsc::channel(100);
+                    let (tx, mut rx): (mrsbfh::Sender, _) = tokio::sync::mpsc::channel(100);
                     let room_id = room.room_id().clone();
 
-                    let cloned_config = config.clone();
                     let cloned_client = client.clone();
+                    let cloned_room = room.clone();
                     tokio::spawn(async move {
                         let normalized_body = mrsbfh::commands::command_utils::WHITESPACE_DEDUPLICATOR_MAGIC.replace_all(&msg_body, " ");
-                        let mut split = msg_body.split_whitespace();
+                        let cloned_body = dbg!(normalized_body).clone();
+                        let mut split = cloned_body.split_whitespace().map(|x|x.to_string());
 
                         let command_raw = split.next().expect("This is not a command").to_lowercase();
                         let command = mrsbfh::commands::command_utils::COMMAND_MATCHER_MAGIC.captures(command_raw.as_str())
@@ -267,15 +287,17 @@ pub fn commands(_: TokenStream, input: TokenStream) -> TokenStream {
                            tracing::info!("Got command: {}", command);
                         }
                         // Make sure this is immutable
-                        let args: Vec<&str> = split.collect();
+                        let args_raw: Vec<String> = split.collect();
+                        let args: std::sync::Arc<mrsbfh::tokio::sync::Mutex<Vec<String>>> = std::sync::Arc::new(mrsbfh::tokio::sync::Mutex::new(args_raw.clone()));
+                        let tx = std::sync::Arc::new(mrsbfh::tokio::sync::Mutex::new(tx));
+
+                        let mut msg = mrsbfh::commands::Message::new();
+                        #(#message_magic)*
+                        msg.extensions_mut().insert(std::sync::Arc::clone(&args));
+                        msg.extensions_mut().insert(std::sync::Arc::clone(&tx));
                         if let Err(e) = match_command(
                             command.as_str(),
-                            cloned_client.clone(),
-                            cloned_config.clone(),
-                            tx,
-                            sender,
-                            room_id,
-                            args,
+                            msg
                         )
                         .await
                         {
@@ -285,7 +307,7 @@ pub fn commands(_: TokenStream, input: TokenStream) -> TokenStream {
                     });
 
                     while let Some(v) = rx.recv().await {
-                        if let Err(e) = room.send(v, None)
+                        if let Err(e) = cloned_room.send(v, None)
                             .await
                         {
                             tracing::error!("{}", e);
@@ -295,7 +317,9 @@ pub fn commands(_: TokenStream, input: TokenStream) -> TokenStream {
             }
         };
         method.block = new_block;
+    } else {
+        panic!("Function needs to be called `on_room_message`");
     }
 
-    TokenStream::from(quote! {#method})
+    TokenStream::from(quote_spanned! {Span::call_site()=>#method})
 }
