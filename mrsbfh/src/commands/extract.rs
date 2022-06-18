@@ -6,6 +6,8 @@ use std::collections::HashMap;
 use std::fmt;
 use std::hash::{BuildHasherDefault, Hasher};
 use std::ops::Deref;
+use std::sync::Arc;
+use tokio::sync::Mutex;
 
 type AnyMap = HashMap<TypeId, Box<dyn Any + Send + Sync>, BuildHasherDefault<IdHasher>>;
 
@@ -68,10 +70,10 @@ impl Extensions {
     /// assert!(ext.insert(4u8).is_none());
     /// assert_eq!(ext.insert(9i32), Some(5i32));
     /// ```
-    pub fn insert<T: Send + Sync + 'static>(&mut self, val: T) -> Option<T> {
+    pub fn insert<T: Send + Sync + 'static>(&mut self, val: Arc<Mutex<T>>) -> Option<T> {
         self.map
             .get_or_insert_with(|| Box::new(HashMap::default()))
-            .insert(TypeId::of::<T>(), Box::new(val))
+            .insert(TypeId::of::<Arc<Mutex<T>>>(), Box::new(val))
             .and_then(|boxed| {
                 (boxed as Box<dyn Any + 'static>)
                     .downcast()
@@ -92,10 +94,10 @@ impl Extensions {
     ///
     /// assert_eq!(ext.get::<i32>(), Some(&5i32));
     /// ```
-    pub fn get<T: Send + Sync + 'static>(&self) -> Option<&T> {
+    pub fn get<T: Send + Sync + 'static>(&self) -> Option<&Arc<Mutex<T>>> {
         self.map
             .as_ref()
-            .and_then(|map| map.get(&TypeId::of::<T>()))
+            .and_then(|map| map.get(&TypeId::of::<Arc<Mutex<T>>>()))
             .and_then(|boxed| (&**boxed as &(dyn Any + 'static)).downcast_ref())
     }
 
@@ -111,7 +113,7 @@ impl Extensions {
     ///
     /// assert_eq!(ext.get::<String>().unwrap(), "Hello World");
     /// ```
-    pub fn get_mut<T: Send + Sync + 'static>(&mut self) -> Option<&mut T> {
+    pub fn get_mut<T: Send + Sync + 'static>(&mut self) -> Option<&mut Arc<Mutex<T>>> {
         self.map
             .as_mut()
             .and_then(|map| map.get_mut(&TypeId::of::<T>()))
@@ -131,7 +133,7 @@ impl Extensions {
     /// assert_eq!(ext.remove::<i32>(), Some(5i32));
     /// assert!(ext.get::<i32>().is_none());
     /// ```
-    pub fn remove<T: Send + Sync + 'static>(&mut self) -> Option<T> {
+    pub fn remove<T: Send + Sync + 'static>(&mut self) -> Option<Arc<Mutex<T>>> {
         self.map
             .as_mut()
             .and_then(|map| map.remove(&TypeId::of::<T>()))
@@ -195,7 +197,7 @@ impl Extensions {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct Extension<T>(pub Arc<Mutex<T>>);
 
 #[async_trait::async_trait]
@@ -212,7 +214,7 @@ where
             .ok_or_else(|| {
                 ExtensionRejection::MissingExtension(format!(
                     "Extension of type `{}` was not found. Perhaps you forgot to add it? See `axum::extract::Extension`.",
-                    std::any::type_name::<T>()
+                    std::any::type_name::<Arc<Mutex<T>>>()
                 ))
             })
             .map(|x| x.clone())?;
@@ -222,7 +224,7 @@ where
 }
 
 impl<T> Deref for Extension<T> {
-    type Target = T;
+    type Target = Arc<Mutex<T>>;
 
     fn deref(&self) -> &Self::Target {
         &self.0
